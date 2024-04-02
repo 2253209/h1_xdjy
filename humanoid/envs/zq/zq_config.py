@@ -55,7 +55,9 @@ class ZqCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/zq01/urdf/zq_line_foot.urdf'
+        # file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/zq01/urdf/zq_line_foot.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/zq01/mjcf/zq_line_foot.xml'
+
 
         name = "zq01"
         foot_name = "foot"
@@ -184,7 +186,7 @@ class ZqCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 3.6
+            joint_pos = 1.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait

@@ -63,7 +63,7 @@ def play(args):
     env_cfg.noise.noise_level = 0.5
 
 
-    train_cfg.seed = 5
+    train_cfg.seed = -1
     print("train_cfg.runner_class_name:", train_cfg.runner_class_name)
 
     # prepare environment
@@ -87,7 +87,7 @@ def play(args):
     robot_index = 0  # which robot is used for logging
     joint_index = 1  # which joint is used for logging
     max_steps = 10000
-    stop_state_log = 500  # number of steps before plotting states
+    stop_state_log = 1000  # number of steps before plotting states
 
     if RENDER:
         camera_properties = gymapi.CameraProperties()
