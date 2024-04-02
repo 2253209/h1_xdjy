@@ -193,7 +193,7 @@ if __name__ == '__main__':
                 mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/zq01/mjcf/zq_line_foot.xml'
 
             sim_duration = 60.0
-            dt = 0.001
+            dt = 0.002
             decimation = 5
 
         class robot_config:

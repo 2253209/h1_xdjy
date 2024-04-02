@@ -24,7 +24,7 @@ class Deploy:
         self.cfg = cfg
         self.log_path = path
 
-    def publish_action(self, action):
+    def publish_action(self, action, kp, kd):
         command_for_robot = pd_targets_lcmt()
         # command_for_robot.q_des = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], dtype=np.double)  #action[index]
         # command_for_robot.qd_des = np.array([0.1, 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1, 9.1, 10.1, 11.1], dtype=np.double)  #np.zeros(12)
@@ -32,8 +32,8 @@ class Deploy:
         # command_for_robot.kd = np.array([0.3, 1.3, 2.3, 3.3, 4.3, 5.3, 6.3, 7.3, 8.3, 9.3, 10.3, 11.3], dtype=np.double)  #cfg.robot_config.kds[index]
         command_for_robot.q_des = action[self.cfg.env.dof_index]
         command_for_robot.qd_des = np.zeros(self.cfg.env.num_actions)
-        command_for_robot.kp = self.cfg.robot_config.kps[self.cfg.env.dof_index]
-        command_for_robot.kd = self.cfg.robot_config.kds[self.cfg.env.dof_index]
+        command_for_robot.kp = kp[self.cfg.env.dof_index]
+        command_for_robot.kd = kd[self.cfg.env.dof_index]
 
         command_for_robot.tau_ff = np.zeros(self.cfg.env.num_actions)
         command_for_robot.se_contactState = np.zeros(4)
@@ -91,6 +91,8 @@ class Deploy:
         target_q = np.zeros(self.cfg.env.num_actions, dtype=np.double)
         action = np.zeros(self.cfg.env.num_actions, dtype=np.double)
         action_net = np.zeros(self.cfg.env.num_actions, dtype=np.double)
+        kp = np.zeros(self.cfg.env.num_actions)
+        kd = np.zeros(self.cfg.env.num_actions)
 
         hist_obs = deque()
         for _ in range(self.cfg.env.frame_stack):
@@ -103,9 +105,10 @@ class Deploy:
         es = StateEstimator(self.lc)
         es.spin()
 
-        act_gen = ActionGenerator(self.cfg.env.default_dof_pos)
         key_comm = KeyCommand()
         key_comm.start()
+
+        act_gen = ActionGenerator(self.cfg)
 
         sp_logger = SimpleLogger('/home/qin/Desktop/logs/deploy_logs')
         try:
@@ -148,24 +151,35 @@ class Deploy:
                 for i in range(self.cfg.env.frame_stack):
                     policy_input[0, i * self.cfg.env.num_single_obs: (i + 1) * self.cfg.env.num_single_obs] = hist_obs[i][0, :]
 
-                action_p = np.copy(q * 4)
+                # action_p = np.copy(q * 4)
+                action_q = action * self.cfg.env.action_scale
 
                 if key_comm.stepCalibrate:
                     # 当状态是“静态归零模式”时：将所有电机缓慢置于初始位置。12312312311
-                    action = act_gen.calibrate(action_p)
+                    action[:] = act_gen.calibrate(action_q)
+                    kp[:] = self.cfg.robot_config.kps_stand[:]
+                    kd[:] = self.cfg.robot_config.kds_stand[:]
+                    act_gen.episode_length_buf[0] = 0
+                elif key_comm.stepTest:
+                    # 当状态是“挂起动腿模式”时：使用动作发生器，生成腿部动作
+                    action[:] = np.array(act_gen.step())
+                    kp[:] = self.cfg.robot_config.kps[:]
+                    kd[:] = self.cfg.robot_config.kds[:]
+                elif key_comm.stepNet:
+                    # 当状态是“神经网络模式”时：使用神经网络输出动作
+                    action_net = policy(torch.tensor(policy_input))[0].detach().numpy()
+                    action[0:5] = action_net[0:5]
+                    action[5] = 0.0
+                    action[6:11] = action_net[5:10]
+                    action[11] = 0.0
+                    kp[:] = self.cfg.robot_config.kps[:]
+                    kd[:] = self.cfg.robot_config.kds[:]
+                    act_gen.episode_length_buf[0] = 0
                 else:
-                    if key_comm.stepTest:
-                        # 当状态是“挂起动腿模式”时：使用动作发生器，生成腿部动作
-                        action = np.array(act_gen.step()[0])
-                    elif key_comm.stepNet:
-                        # 当状态是“神经网络模式”时：使用神经网络输出动作
-                        action_net = policy(torch.tensor(policy_input))[0].detach().numpy()
-                        action[0:5] = action_net[0:5]
-                        action[5] = 0.0
-                        action[6:11] = action_net[5:10]
-                        action[11] = 0.0
-                    else:
-                        action = np.zeros(self.cfg.env.num_actions, dtype=np.double)
+                    action = np.zeros(self.cfg.env.num_actions, dtype=np.double)
+                    kp[:] = self.cfg.robot_config.kps[:]
+                    kd[:] = self.cfg.robot_config.kds[:]
+                    act_gen.episode_length_buf[0] = 0
 
                 action = np.clip(action, -self.cfg.normalization.clip_actions, self.cfg.normalization.clip_actions)
 
@@ -175,13 +189,13 @@ class Deploy:
                 target_q = action * self.cfg.env.action_scale
 
                 # 将神经网络生成的，左右脚的pitch、row位置，映射成关节电机角度
-                my_joint_left, _ = decouple(-target_q[4], 0.0, "left")
-                my_joint_right, _ = decouple(target_q[10], 0.0, "right")
+                my_joint_left, _ = decouple(target_q[5], target_q[4], "left")
+                my_joint_right, _ = decouple(target_q[11], target_q[10], "right")
 
-                target_q[4] = my_joint_left[0]
+                target_q[4] = -my_joint_left[0]
                 target_q[5] = my_joint_left[1]
                 target_q[10] = my_joint_right[0]
-                target_q[11] = my_joint_right[1]
+                target_q[11] = -my_joint_right[1]
 
                 # target_dq = np.zeros(self.cfg.env.num_actions, dtype=np.double)
                 # Generate PD control
@@ -190,13 +204,11 @@ class Deploy:
                 # tau = np.clip(tau, -self.cfg.robot_config.tau_limit, self.cfg.robot_config.tau_limit)  # Clamp torques
 
                 # !!!!!!!! send target_q to lcm
-                self.publish_action(target_q)
+                self.publish_action(target_q, kp, kd)
                 key_comm.timestep += 1
 
         except KeyboardInterrupt:
             print(f'用户终止。')
-        except Exception as e:
-            print(f'未知异常:{e}')
         finally:
             print(f'count={key_comm.timestep}')
             es.close()
@@ -207,7 +219,7 @@ class Deploy:
 class DeployCfg:
 
     class env:
-        dt = 0.005
+        dt = 0.01
         frame_stack = 15
         c_frame_stack = 3
         num_single_obs = 41  # 5+10+10+10+3+3
@@ -219,10 +231,8 @@ class DeployCfg:
         num_net = 10
         dof_index = [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5]
         net_index = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
-        default_dof_pos = np.array([
-            [0.0, 0., 0.2, -0.4, 0.2, 0.,
-             0.0, 0., 0.2, -0.4, 0.2, 0.]
-        ])
+        default_dof_pos = [0., 0., -0.2, 0., 0.1, 0.,
+                           0., 0., -0.2, 0., 0.1, 0.]
 
     class normalization:
         class obs_scales:
@@ -242,12 +252,11 @@ class DeployCfg:
         dyaw = 0.0  # 0.05
 
     class robot_config:
-        # kps = np.array([200, 200, 350, 350, 15, 15, 200, 200, 350, 350, 15, 15], dtype=np.double)
-        # kds = np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10], dtype=np.double)
-        # tau_limit = 200. * np.ones(12, dtype=np.double)
         kps = np.array([200, 200, 200, 200, 50, 50, 200, 200, 200, 200, 50, 50], dtype=np.double)
-        # kds = np.array([5, 5, 5, 5, 1, 1, 5, 5, 5, 5, 1, 1], dtype=np.double)
         kds = np.array([10, 10, 10, 10, 0, 0, 10, 10, 10, 10, 0, 0], dtype=np.double)
+
+        kps_stand = np.array([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100], dtype=np.double)
+        kds_stand = np.array([10, 10, 10, 5, 2, 2, 10, 10, 10, 5, 2, 2], dtype=np.double)
 
         # tau_limit = 200. * np.ones(10, dtype=np.double)
 

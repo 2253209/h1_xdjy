@@ -173,7 +173,7 @@ if __name__ == '__main__':
     red2angle = 180 / np.pi
 
     # my_theta_ref = np.array([-46.38490723, -53.91584432]) * angle2rad  # 参考电机角度指令
-    my_theta_ref = np.array([-53.91584432, -46.38490723]) * angle2rad
+    my_theta_ref = np.array([6, 6]) * angle2rad
     print('my_theta_ref:', my_theta_ref)
     my_joint_angles = forward_kinematics(my_theta_ref,leg='left')
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
     print('my_compute_angles:', np.array(my_compute_angles) * red2angle)
 
-    my_joint_right, _ = decouple(0.2,0.4,"right")
-    my_joint_left, _ = decouple(-0.2,0.4,"left")
+    my_joint_right, _ = decouple(0.0,0.3,"right")
+    my_joint_left, _ = decouple(0.0,0.3,"left")
 
     print(my_joint_right, my_joint_left)

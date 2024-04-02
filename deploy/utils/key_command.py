@@ -34,7 +34,7 @@ class KeyCommand:
         if key == Key.up:  # str(key) == "'1'":
             self.timestep = 0
             self.stepCalibrate = True
-            self.stepCalibrate = False
+            # self.stepCalibrate = False
             self.stepTest = False
             self.stepNet = False
             print('!!!!!  静态归零模式 ！')
