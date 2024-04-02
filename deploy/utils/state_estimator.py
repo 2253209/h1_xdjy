@@ -17,6 +17,7 @@ class StateEstimator:
 
         self.state_subscription = self.lc.subscribe("state_estimator", self._state_cb)
         self.leg_subscription = self.lc.subscribe("leg_control_data_RL", self._leg_cb)
+        self.running = True
 
 
     def _state_cb(self, channel, data):
@@ -36,8 +37,8 @@ class StateEstimator:
     def poll(self, cb=None):
         t = time.time()
         try:
-            timeout = 0.01
-            while True:
+            timeout = 0.002
+            while self.running:
                 rfds, wfds, efds = select.select([self.lc.fileno()], [], [], timeout)
                 if rfds:
                     # print("message received!")
@@ -52,11 +53,12 @@ class StateEstimator:
             pass
 
     def spin(self):
-        self.run_thread = threading.Thread(target=self.poll, daemon=False)
+        self.run_thread = threading.Thread(target=self.poll, daemon=True)
         self.run_thread.start()
 
     def close(self):
         self.lc.unsubscribe(self.state_subscription)
+        self.running = False
 
 
 if __name__ == "__main__":
@@ -64,4 +66,10 @@ if __name__ == "__main__":
 
     lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=255")
     se = StateEstimator(lc)
-    se.poll()
+    try:
+        se.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        se.close()
+

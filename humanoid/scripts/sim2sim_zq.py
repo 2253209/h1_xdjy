@@ -99,8 +99,10 @@ def run_mujoco(policy, cfg):
     model = mujoco.MjModel.from_xml_path(cfg.sim_config.mujoco_model_path)
     model.opt.timestep = cfg.sim_config.dt
     data = mujoco.MjData(model)
-    for index, value in enumerate(cfg.init_state.default_joint_angles.values()):
-        data.qpos[7 + index] = value
+    # for index, value in enumerate(cfg.init_state.default_joint_angles.values()):
+    #     data.qpos[7 + index] = value
+    data.qpos[-10:] = [0.0, 0., 0.2, -0.4, 0.2,
+                       -0.0, 0., 0.2, -0.4, 0.2,]
     mujoco.mj_step(model, data)
     viewer = mujoco_viewer.MujocoViewer(model, data)
 
@@ -161,7 +163,7 @@ def run_mujoco(policy, cfg):
                              target_dq, dq, cfg.robot_config.kds)  # Calc torques
             tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)  # Clamp torques
             data.ctrl = tau
-
+            mujoco.mj_resetData(model, data)
             mujoco.mj_step(model, data)
             viewer.render()
             count_lowlevel += 1
