@@ -105,14 +105,14 @@ class ZqCfg(LeggedRobotCfg):
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'JOINT_Z1': 0.,
             'JOINT_Z2': 0.,
-            'JOINT_Z3': -0.2,
-            'JOINT_Z4': 0.,
+            'JOINT_Z3': 0.1,
+            'JOINT_Z4': -0.2,
             # 'JOINT_Z5': 0.,
             'JOINT_Z6': 0.1,
             'JOINT_Y1': 0.0,
             'JOINT_Y2': 0.,
-            'JOINT_Y3': -0.2,
-            'JOINT_Y4': 0.,
+            'JOINT_Y3': 0.1,
+            'JOINT_Y4': -0.2,
             # 'JOINT_Y5': -0.,
             'JOINT_Y6': 0.1,
         }

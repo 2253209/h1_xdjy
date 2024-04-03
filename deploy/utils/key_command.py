@@ -12,7 +12,7 @@ class KeyCommand:
     def __init__(self):
         self.stepTest = False
         self.stepNet = False
-        self.stepCalibrate = False
+        self.stepCalibrate = True
         self.timestep = 0
         self.listener = None
 

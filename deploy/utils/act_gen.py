@@ -12,7 +12,7 @@ class ActionGenerator:
         self.device = "cpu"
         self.episode_length_buf = torch.zeros(
             self.num_envs, device=self.device, dtype=torch.long)
-        self.dt = 0.01
+        self.dt = 0.005
         self.target_joint_pos_scale = 0.2
         # default_dof_pos： 所有电机初始位置都是0
         # self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
@@ -73,8 +73,8 @@ class ActionGenerator:
         target = joint_pos - self.default_dof_pos
         # joint_pos[target > 0.03] -= 0.03
         # joint_pos[target < -0.03] += 0.03
-        joint_pos[target > 0.005] -= 0.005
-        joint_pos[target < -0.005] += 0.005
+        joint_pos[target > 0.01] -= 0.01
+        joint_pos[target < -0.01] += 0.01
         return 4 * joint_pos
 
     def step(self):

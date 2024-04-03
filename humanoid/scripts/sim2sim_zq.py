@@ -41,8 +41,8 @@ import torch
 from deploy.utils.logger import SimpleLogger
 
 class cmd:
-    vx = 0.15  # 0.5
-    vy = -0.05  # 0.
+    vx = 0.5  # 0.5
+    vy = 0.  # 0.
     dyaw = 0.0  # 0.05
 
 
@@ -99,10 +99,10 @@ def run_mujoco(policy, cfg):
     model = mujoco.MjModel.from_xml_path(cfg.sim_config.mujoco_model_path)
     model.opt.timestep = cfg.sim_config.dt
     data = mujoco.MjData(model)
-    # for index, value in enumerate(cfg.init_state.default_joint_angles.values()):
-    #     data.qpos[7 + index] = value
-    data.qpos[-10:] = [0.0, 0., 0.2, -0.4, 0.2,
-                       -0.0, 0., 0.2, -0.4, 0.2,]
+    for index, value in enumerate(cfg.init_state.default_joint_angles.values()):
+        data.qpos[7 + index] = value
+    # data.qpos[-10:] = [0.0, 0., 0.2, -0.4, 0.2,
+    #                    -0.0, 0., 0.2, -0.4, 0.2,]
     mujoco.mj_step(model, data)
     viewer = mujoco_viewer.MujocoViewer(model, data)
 
@@ -163,7 +163,7 @@ def run_mujoco(policy, cfg):
                              target_dq, dq, cfg.robot_config.kds)  # Calc torques
             tau = np.clip(tau, -cfg.robot_config.tau_limit, cfg.robot_config.tau_limit)  # Clamp torques
             data.ctrl = tau
-            mujoco.mj_resetData(model, data)
+            # mujoco.mj_resetData(model, data)
             mujoco.mj_step(model, data)
             viewer.render()
             count_lowlevel += 1
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                 mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/zq01/mjcf/zq_line_foot.xml'
 
             sim_duration = 60.0
-            dt = 0.002
+            dt = 0.001
             decimation = 5
 
         class robot_config:

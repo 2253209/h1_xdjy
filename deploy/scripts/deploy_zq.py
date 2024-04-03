@@ -133,8 +133,10 @@ class Deploy:
                 obs[0, 2] = self.cfg.cmd.vx * self.cfg.normalization.obs_scales.lin_vel
                 obs[0, 3] = self.cfg.cmd.vy * self.cfg.normalization.obs_scales.lin_vel
                 obs[0, 4] = self.cfg.cmd.dyaw * self.cfg.normalization.obs_scales.ang_vel
-                obs[0, 5:15] = q[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_pos
-                obs[0, 15:25] = dq[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_vel
+                obs[0, 5:15] = q[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_pos    # [9]应该取负值
+                obs[0, 14] = -obs[0, 14]
+                obs[0, 15:25] = dq[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_vel    # [9]应该取负值
+                obs[0, 24] = -obs[0, 24]
                 obs[0, 25:35] = action[self.cfg.env.net_index]
                 obs[0, 35:38] = omega
                 obs[0, 38:41] = eu_ang
@@ -197,6 +199,13 @@ class Deploy:
                 target_q[10] = my_joint_right[0]
                 target_q[11] = -my_joint_right[1]
 
+                # target_q[6] = 0.
+                # target_q[7] = 0.
+                # target_q[8] = 0.
+                # target_q[9] = 0.
+                # target_q[11] = 0.
+                # action = np.clip(action, -self.cfg.normalization.clip_actions, self.cfg.normalization.clip_actions)
+
                 # target_dq = np.zeros(self.cfg.env.num_actions, dtype=np.double)
                 # Generate PD control
                 # tau = self.pd_control(target_q, q, self.cfg.robot_config.kps,
@@ -204,6 +213,10 @@ class Deploy:
                 # tau = np.clip(tau, -self.cfg.robot_config.tau_limit, self.cfg.robot_config.tau_limit)  # Clamp torques
 
                 # !!!!!!!! send target_q to lcm
+                target_q = np.clip(target_q,
+                                   [-0.5, -0.25, -1.15, -2.2, -0.55, -0.55, -0.5, -0.28, -1.15, -2.2, -0.55, -0.55],
+                                   [0.5, 0.25, 1.15, 0.05, 0.55, 0.55, 0.5, 0.28, 1.15, 0.05, 0.55, 0.55]
+                                   )
                 self.publish_action(target_q, kp, kd)
                 key_comm.timestep += 1
 
@@ -219,7 +232,7 @@ class Deploy:
 class DeployCfg:
 
     class env:
-        dt = 0.01
+        dt = 0.005
         frame_stack = 15
         c_frame_stack = 3
         num_single_obs = 41  # 5+10+10+10+3+3
@@ -233,6 +246,8 @@ class DeployCfg:
         net_index = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10]
         default_dof_pos = [0., 0., -0.2, 0., 0.1, 0.,
                            0., 0., -0.2, 0., 0.1, 0.]
+        # default_dof_pos = [0., 0., 0., 0., 0., 0.,
+        #                    0., 0., 0., 0., 0., 0.]
 
     class normalization:
         class obs_scales:
@@ -247,7 +262,7 @@ class DeployCfg:
         clip_actions = 18.
 
     class cmd:
-        vx = 0.0  # 0.5
+        vx = 0.1  # 0.5
         vy = 0.0  # 0.
         dyaw = 0.0  # 0.05
 
