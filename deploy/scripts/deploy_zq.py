@@ -113,9 +113,13 @@ class Deploy:
         sp_logger = SimpleLogger('/home/qin/Desktop/logs/deploy_logs')
         try:
             while key_comm.listening:
-                time.sleep(max(self.cfg.env.dt - (time.time() - current_time), 0))
+                c_delay = time.time() - current_time
+                s_delay = self.cfg.env.dt - c_delay
+                # print(f'c_delay: {c_delay} s_delay={s_delay} ')
+                time.sleep(max(s_delay, 0))
+                frq = time.time() - current_time
                 if key_comm.timestep % 100 == 0:
-                    print(f'frq: {1 / (time.time() - current_time)} Hz count={key_comm.timestep}')
+                    print(f'frq: {1 / frq} Hz count={key_comm.timestep}')
                 current_time = time.time()
 
                 # Obtain an observation
@@ -134,9 +138,9 @@ class Deploy:
                 obs[0, 3] = self.cfg.cmd.vy * self.cfg.normalization.obs_scales.lin_vel
                 obs[0, 4] = self.cfg.cmd.dyaw * self.cfg.normalization.obs_scales.ang_vel
                 obs[0, 5:15] = q[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_pos    # [9]应该取负值
-                obs[0, 14] = -obs[0, 14]
-                obs[0, 15:25] = dq[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_vel    # [9]应该取负值
-                obs[0, 24] = -obs[0, 24]
+                obs[0, 9] = -obs[0, 9]
+                obs[0, 15:25] = dq[self.cfg.env.net_index] * self.cfg.normalization.obs_scales.dof_vel    # [19]应该取负值
+                obs[0, 19] = -obs[0, 19]
                 obs[0, 25:35] = action[self.cfg.env.net_index]
                 obs[0, 35:38] = omega
                 obs[0, 38:41] = eu_ang
@@ -144,7 +148,7 @@ class Deploy:
                 obs = np.clip(obs, -self.cfg.normalization.clip_observations, self.cfg.normalization.clip_observations)
 
                 # 将obs写入文件，在桌面
-                sp_logger.save(obs, key_comm.timestep)
+                sp_logger.save(obs, key_comm.timestep, frq)
 
                 hist_obs.append(obs)
                 hist_obs.popleft()
@@ -191,19 +195,19 @@ class Deploy:
                 target_q = action * self.cfg.env.action_scale
 
                 # 将神经网络生成的，左右脚的pitch、row位置，映射成关节电机角度
-                my_joint_left, _ = decouple(target_q[5], target_q[4], "left")
-                my_joint_right, _ = decouple(target_q[11], target_q[10], "right")
+                # my_joint_left, _ = decouple(target_q[5], target_q[4], "left")
+                # my_joint_right, _ = decouple(target_q[11], target_q[10], "right")
 
-                target_q[4] = -my_joint_left[0]
-                target_q[5] = my_joint_left[1]
-                target_q[10] = my_joint_right[0]
-                target_q[11] = -my_joint_right[1]
+                # target_q[4] = -my_joint_left[0]
+                # target_q[5] = my_joint_left[1]
+                # target_q[10] = my_joint_right[0]
+                # target_q[11] = -my_joint_right[1]
 
-                # target_q[6] = 0.
-                # target_q[7] = 0.
-                # target_q[8] = 0.
-                # target_q[9] = 0.
-                # target_q[11] = 0.
+                target_q[5] = target_q[4]
+                target_q[4] = -target_q[5]
+
+                target_q[11] = -target_q[10]
+
                 # action = np.clip(action, -self.cfg.normalization.clip_actions, self.cfg.normalization.clip_actions)
 
                 # target_dq = np.zeros(self.cfg.env.num_actions, dtype=np.double)

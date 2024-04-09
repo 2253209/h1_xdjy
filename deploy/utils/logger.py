@@ -37,9 +37,10 @@ class SimpleLogger:
             self.file.write(f'{label}_{i},')
             i += 1
 
+        self.file.write('time,')
         self.file.write('\n')
 
-    def save(self, obs, step):
+    def save(self, obs, step, time):
         for row in obs:
             k = 0
             self.file.write('%d, ' % step)
@@ -49,6 +50,7 @@ class SimpleLogger:
                 else:
                     self.file.write(' %.4f,' % item)
                 k += 1
+            self.file.write(' %d,' % int(time * 10 ** 6))
             self.file.write('\n')
 
     def close(self):
