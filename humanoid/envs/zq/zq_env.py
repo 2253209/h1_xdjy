@@ -110,9 +110,9 @@ class ZqFreeEnv(LeggedRobot):
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
-        stance_mask[:, 0] = sin_pos >= 0
+        stance_mask[:, 1] = sin_pos >= 0
         # right foot stance
-        stance_mask[:, 1] = sin_pos < 0
+        stance_mask[:, 0] = sin_pos < 0
         # Double support phase
         stance_mask[torch.abs(sin_pos) < 0.1] = 1
 
@@ -148,6 +148,12 @@ class ZqFreeEnv(LeggedRobot):
         # self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
 
         self.ref_action = (1/self.cfg.control.action_scale) * self.ref_dof_pos
+        #
+        # mask = self._get_gait_phase()
+        # print('%d, 右脚=%d, 左脚=%d, 2=%.3f 3=%.3f 4=%.3f 7=%.3f 8=%.3f 9=%.3f' % (self.episode_length_buf[0],
+        #       mask[0, 0], mask[0, 1],
+        #       self.ref_dof_pos[0, 2], self.ref_dof_pos[0, 3], self.ref_dof_pos[0, 4],
+        #       self.ref_dof_pos[0, 7], self.ref_dof_pos[0, 8], self.ref_dof_pos[0, 9]))
 
 
     def create_sim(self):
@@ -199,8 +205,8 @@ class ZqFreeEnv(LeggedRobot):
             actions += self.ref_action
             # actions = self.ref_action
         # dynamic randomization
-        # delay = torch.rand((self.num_envs, 1), device=self.device)
-        # actions = (1 - delay) * actions + delay * self.actions
+        delay = torch.rand((self.num_envs, 1), device=self.device)
+        actions = (1 - delay) * actions + delay * self.actions
         actions += self.cfg.domain_rand.dynamic_randomization * torch.randn_like(actions) * actions
         return super().step(actions)
 
@@ -215,6 +221,9 @@ class ZqFreeEnv(LeggedRobot):
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.
+        # print('右脚=%d, 左脚=%d, 右压=%.3f 左压=%.3f' % (
+        #     stance_mask[0, 0], stance_mask[0, 1],
+        #     contact_mask[0, 0], contact_mask[0, 1]))
 
         self.command_input = torch.cat(
             (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)

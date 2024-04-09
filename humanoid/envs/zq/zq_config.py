@@ -76,8 +76,8 @@ class ZqCfg(LeggedRobotCfg):
         curriculum = False
         # rough terrain only:
         measure_heights = False
-        static_friction = 0.6
-        dynamic_friction = 0.6
+        static_friction = 1.0
+        dynamic_friction = 1.0
         terrain_length = 8.
         terrain_width = 8.
         num_rows = 20  # number of terrain rows (levels)
@@ -105,23 +105,23 @@ class ZqCfg(LeggedRobotCfg):
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'JOINT_Y1': 0.0,
             'JOINT_Y2': 0.,
-            'JOINT_Y3': -0.2,
-            'JOINT_Y4': -0.0,
-            'JOINT_Y5': 0.1,
+            'JOINT_Y3': 0.2,
+            'JOINT_Y4': -0.4,
+            'JOINT_Y5': 0.2,
             # 'JOINT_Y6': 0.0,
             'JOINT_Z1': 0.,
             'JOINT_Z2': 0.,
-            'JOINT_Z3': -0.2,
-            'JOINT_Z4': -0.0,
-            'JOINT_Z5': 0.1,
+            'JOINT_Z3': 0.2,
+            'JOINT_Z4': -0.4,
+            'JOINT_Z5': 0.2,
             # 'JOINT_Z6': 0.0,
         }
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
         stiffness = {'1': 200.0, '2': 200.0, '3': 200.0, '4': 200.0,
-                     '6': 50}
-        damping = {'1': 10, '2': 10, '3': 10, '4': 10, '6': 0}
+                     '5': 50}
+        damping = {'1': 10, '2': 10, '3': 10, '4': 10, '5': 0}
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
@@ -187,7 +187,7 @@ class ZqCfg(LeggedRobotCfg):
         class scales:
             # reference motion tracking
             joint_pos = 1.6
-            feet_clearance = 1.
+            # feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
             feet_air_time = 1.
@@ -247,7 +247,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 60  # per iteration
-        max_iterations = 10001  # number of policy updates
+        max_iterations = 3001  # number of policy updates
 
         # logging
         save_interval = 100  # check for potential saves every this many iterations
