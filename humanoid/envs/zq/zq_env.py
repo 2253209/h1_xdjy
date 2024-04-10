@@ -478,7 +478,7 @@ class ZqFreeEnv(LeggedRobot):
         swing_mask = 1 - self._get_gait_phase()
 
         # feet height should be closed to target feet height at the peak
-        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
+        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.03
         rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
         self.feet_height *= ~contact
         return rew_pos

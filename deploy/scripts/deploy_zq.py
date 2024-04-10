@@ -110,7 +110,7 @@ class Deploy:
 
         act_gen = ActionGenerator(self.cfg)
 
-        sp_logger = SimpleLogger('/home/qin/Desktop/logs/deploy_logs')
+        sp_logger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/dep_log')
         try:
             while key_comm.listening:
                 c_delay = time.time() - current_time

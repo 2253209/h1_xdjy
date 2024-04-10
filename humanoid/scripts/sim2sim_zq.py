@@ -116,7 +116,7 @@ def run_mujoco(policy, cfg):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs], dtype=np.double))
 
     count_lowlevel = 0
-    sp_logger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/zq/sim_log')
+    sp_logger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/sim_log')
 
     last_time = time.time()
     curr_time = 0
