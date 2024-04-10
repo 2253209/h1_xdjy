@@ -29,6 +29,8 @@
 
 
 import math
+import time
+
 import numpy as np
 import mujoco, mujoco_viewer
 from tqdm import tqdm
@@ -114,8 +116,10 @@ def run_mujoco(policy, cfg):
         hist_obs.append(np.zeros([1, cfg.env.num_single_obs], dtype=np.double))
 
     count_lowlevel = 0
-    sp_logger = SimpleLogger('/home/qin/Desktop/logs/sim_logs')
+    sp_logger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/zq/sim_log')
 
+    last_time = time.time()
+    curr_time = 0
     # for _ in tqdm(range(int(cfg.sim_config.sim_duration / cfg.sim_config.dt)), desc="Simulating..."):
     try:
         for _ in range(int(cfg.sim_config.sim_duration / cfg.sim_config.dt)):
@@ -146,7 +150,9 @@ def run_mujoco(policy, cfg):
                 hist_obs.append(obs)
                 hist_obs.popleft()
 
-                sp_logger.save(obs, count_lowlevel)
+                curr_time = time.time()
+                sp_logger.save(obs, count_lowlevel, curr_time - last_time)
+                last_time = curr_time
 
                 policy_input = np.zeros([1, cfg.env.num_observations], dtype=np.float32)
                 for i in range(cfg.env.frame_stack):
