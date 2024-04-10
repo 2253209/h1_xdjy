@@ -8,6 +8,8 @@ class SimpleLogger:
         # 将当前时间格式化为字符串
         formatted_time = now.strftime('%Y-%m-%d_%H:%M:%S')
         filename = f"{path}/log_{formatted_time}.csv"
+        if not os.path.exists(path):
+            os.mkdir(path)
         self.file = open(filename, "a+")
         print(f"Saving log! Path: {filename}")
         i = 0
