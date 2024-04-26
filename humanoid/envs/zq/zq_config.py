@@ -107,7 +107,7 @@ class ZqCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.84]
+        pos = [0.0, 0.0, 0.85]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'JOINT_Y1': -0.03,
             'JOINT_Y2': 0.0,
@@ -126,10 +126,10 @@ class ZqCfg(LeggedRobotCfg):
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 200, 'JOINT_Y6': 200,
-                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 200, 'JOINT_Z6': 200}
-        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, 'JOINT_Y6': 4,
-                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
+        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, 'JOINT_Y6': 50,
+                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, 'JOINT_Z6': 50}
+        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 2, 'JOINT_Y6': 2,
+                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 2, 'JOINT_Z6': 2}
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.1
@@ -231,7 +231,7 @@ class ZqCfg(LeggedRobotCfg):
     class normalization:
         class obs_scales:
             lin_vel = 1.
-            ang_vel = 1.
+            ang_vel = 0.25
             dof_pos = 1.
             dof_vel = 0.05
             quat = 1.

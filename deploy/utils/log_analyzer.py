@@ -14,13 +14,39 @@ style = ttk.Style()
 style.configure("TLabel", font=("Helvetica", 12))
 style.configure("TButton", font=("Helvetica", 12), padding=10)
 
+init_pos = {
+    'r_act_0': 0.,
+    'r_act_1': 0.,
+    'r_act_2': 0.21,
+    'r_act_3': -0.53,
+    'r_act_4': 0.32,
+    'r_act_5': 0.,
+    'r_act_6': 0.,
+    'r_act_7': 0.,
+    'r_act_8': 0.21,
+    'r_act_9': -0.53,
+    'r_act_10': 0.32,
+    'r_act_11': 0.,
+}
+
+
 # 创建一个Pandas DataFrame来存储CSV数据
 data_frame = pd.DataFrame()
 
 # 选择CSV文件并读取数据的函数
 def load_csv():
     file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-    load_file(file_path)
+    if file_path:
+        load_file(file_path)
+
+def save_csv():
+    file_path = filedialog.asksaveasfilename(
+        title='Save File',
+        defaultextension=".csv",  # 可以指定默认的文件扩展名，这里以.txt为例
+        filetypes=[('CSV files', '*.csv'), ('All files', '*.*')]  # 可以指定文件类型
+    )
+    if file_path:
+        save_file(file_path)
 
 def load_file(file_path):
     if file_path:
@@ -30,6 +56,25 @@ def load_file(file_path):
             populate_options()
         except Exception as e:
             messagebox.showerror("错误", f"读取文件失败: {e}")
+
+def save_file(file_path):
+    with open(file_path, 'w') as file:
+        try:
+            indices = b1.curselection()
+            # 根据索引获取选中项的值
+            selected_columns = [b1.get(index) for index in indices]
+            if isinstance(selected_columns, list) and len(selected_columns) > 0:
+                for column in selected_columns:
+                    file.write(f'{column},')
+                file.write('\n')
+
+                for index, row in data_frame.iterrows():
+                    for column in selected_columns:
+                        file.write(' %.4f,' % row[column])
+                    file.write('\n')
+        finally:
+            file.close()
+
 
 # 填充列选项的函数
 def populate_options():
@@ -45,12 +90,29 @@ def plot_graph(selected_columns):
             fig.clf()  # 清除Figure对象中的所有Artist
             ax = fig.add_subplot(111)  # 重新添加子图
 
+
             for column in selected_columns:
                 ax.plot(data_frame[column], marker='.', linestyle='-', label=column)
+                # if 'n_act' in column:
+                #     ax.plot(data_frame[column] * 0.1, marker='.', linestyle='-', label=column)
+                # else:
+                #     if init_pos.get(column) is None:
+                #         ax.plot(data_frame[column], marker='.', linestyle='-', label=column)
+                #     else:
+                #         ax.plot(data_frame[column] - init_pos.get(column), marker='.', linestyle='-', label=column)
             ax.legend(loc='best')
             canvas.draw()
         except Exception as e:
             messagebox.showerror("错误", f"绘图失败: {e}")
+
+def on_closing():
+    # 这里可以添加一些在关闭窗口前需要执行的代码
+    # 例如，保存数据，询问用户是否真的想要退出等
+    response = messagebox.askyesno("确认退出", "您确定要退出程序吗？")
+    if response:  # 用户点击了“是”
+        root.quit()  # 停止事件循环并退出程序
+
+
 
 # 创建菜单和按钮
 menu_bar = tk.Menu(root)
@@ -59,6 +121,7 @@ root.config(menu=menu_bar)
 file_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="文件", menu=file_menu)
 file_menu.add_command(label="打开CSV文件", command=load_csv)
+file_menu.add_command(label="另存为", command=save_csv)
 
 # 创建列表显示区域
 list_frame = ttk.LabelFrame(root, text='列表')
@@ -99,7 +162,8 @@ toolbar = NavigationToolbar2Tk(canvas, toolbar_frame)
 toolbar.update()
 toolbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-
+# 将WM_DELETE_WINDOW协议绑定到on_closing函数
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 # 显示窗口
 root.mainloop()
