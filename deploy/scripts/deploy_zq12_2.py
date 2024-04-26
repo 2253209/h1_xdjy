@@ -204,7 +204,7 @@ class Deploy:
                 pos_robot = np.clip(pos_robot, self.cfg.env.joint_limit_min, self.cfg.env.joint_limit_max)  # 过滤掉超过极限的值
 
                 # 调试,上机时关掉
-                # pos_robot[:] = self.cfg.env.default_joint_pos[:]
+                pos_robot[:] = self.cfg.env.default_joint_pos[:]
                 # eu_ang[:] = 0.
                 # omega[:] = 0.
 
@@ -261,25 +261,27 @@ class Deploy:
                     # 当状态是“静态归零模式”时：将所有电机设置初始姿态。注意! action_net需要一直为0
                     action_net[:] = 0.
                     action_robot[:] = self.cfg.env.default_dof_pos[:]
+                    action_filter = action_robot.copy()
                     kp[:] = self.cfg.robot_config.kps_stand[:]
                     kd[:] = self.cfg.robot_config.kds_stand[:]
 
                 elif key_comm.stepTest:
                     # 当状态是“挂起动腿模式”时：使用动作发生器，生成腿部动作
                     action_net[:] = 0.
-                    action_robot[:] = 0.
+                    action_robot[:] = self.cfg.env.default_dof_pos[:]
                     kp[:] = self.cfg.robot_config.kps_stand[:]
                     kd[:] = self.cfg.robot_config.kds_stand[:]
 
                 elif key_comm.stepNet:
                     # 当状态是“神经网络模式”时：使用神经网络输出动作。
-                    action_0 = self.policy(torch.tensor(self.obs_net))[0].detach().numpy()
-                    action_net[:] = action_0[:]
+                    action_net = self.policy(torch.tensor(self.obs_net))[0].detach().numpy()
+                    action_0 = action_net.copy() * self.cfg.env.action_scale + self.cfg.env.default_dof_pos
                     # 低通滤波
-                    action_net = action_net * self.cfg.env.low_pass_rate + (1 - self.cfg.env.low_pass_rate) * action_filter
+                    action_robot = action_0 * self.cfg.env.low_pass_rate + (1 - self.cfg.env.low_pass_rate) * action_filter
 
                     # 关键一步:将神经网络生成的值*action_scale +默认关节位置 !!!!!!
-                    action_robot[:] = action_net * self.cfg.env.action_scale + self.cfg.env.default_dof_pos
+                    # action_robot = action_net.copy() * self.cfg.env.action_scale
+                    # action_robot[:] += self.cfg.env.default_dof_pos[:]
                     # print(action_real)
 
                     # action_robot[0] = 0.
@@ -290,7 +292,7 @@ class Deploy:
                     kp[:] = self.cfg.robot_config.kps[:]
                     kd[:] = self.cfg.robot_config.kds[:]
 
-                    action_filter[:] = action_net[:]
+                    action_filter = action_robot.copy()
                 else:
                     print('退出')
 
