@@ -168,7 +168,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Deployment script.')
-    parser.add_argument('--load_model', type=str, required=True,
+    parser.add_argument('--load_model', type=str, #required=True,
                         help='Run to load from.')
     parser.add_argument('--terrain', action='store_true', help='terrain or plane')
     args = parser.parse_args()
@@ -190,6 +190,8 @@ if __name__ == '__main__':
             kds = np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10], dtype=np.double)
             tau_limit = 200. * np.ones(12, dtype=np.double)
 
+    if not args.load_model:
+        args.load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/XBot_ppo/exported/policies/policy_4.pt'
 
     policy = torch.jit.load(args.load_model)
     run_mujoco(policy, Sim2simCfg())

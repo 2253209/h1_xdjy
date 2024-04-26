@@ -37,12 +37,12 @@ class ZqCfg(LeggedRobotCfg):
     """
     class env(LeggedRobotCfg.env):
         # change the observation dim
-        # frame_stack = 15
-        # c_frame_stack = 3
-        # num_single_obs = 47  # 47
+        frame_stack = 15
+        c_frame_stack = 3
+        num_single_obs = 47  # 47
         # num_observations = int(frame_stack * num_single_obs)
         num_observations = 47
-        # single_num_privileged_obs = 73  # 73
+        single_num_privileged_obs = 73  # 73
         # num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
         num_privileged_obs = 73
         num_actions = 12
