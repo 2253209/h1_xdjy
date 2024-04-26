@@ -1,32 +1,3 @@
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
-
 
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg
 
@@ -41,44 +12,14 @@ from humanoid.utils.terrain import  HumanoidTerrain
 
 
 class ZqFreeEnv(LeggedRobot):
-    '''
-    XBotLFreeEnv is a class that represents a custom environment for a legged robot.
 
-    Args:
-        cfg (LeggedRobotCfg): Configuration object for the legged robot.
-        sim_params: Parameters for the simulation.
-        physics_engine: Physics engine used in the simulation.
-        sim_device: Device used for the simulation.
-        headless: Flag indicating whether the simulation should be run in headless mode.
-
-    Attributes:
-        last_feet_z (float): The z-coordinate of the last feet position.
-        feet_height (torch.Tensor): Tensor representing the height of the feet.
-        sim (gymtorch.GymSim): The simulation object.
-        terrain (HumanoidTerrain): The terrain object.
-        up_axis_idx (int): The index representing the up axis.
-        command_input (torch.Tensor): Tensor representing the command input.
-        privileged_obs_buf (torch.Tensor): Tensor representing the privileged observations buffer.
-        obs_buf (torch.Tensor): Tensor representing the observations buffer.
-        obs_history (collections.deque): Deque containing the history of observations.
-        critic_history (collections.deque): Deque containing the history of critic observations.
-
-    Methods:
-        _push_robots(): Randomly pushes the robots by setting a randomized base velocity.
-        _get_phase(): Calculates the phase of the gait cycle.
-        _get_gait_phase(): Calculates the gait phase.
-        compute_ref_state(): Computes the reference state.
-        create_sim(): Creates the simulation, terrain, and environments.
-        _get_noise_scale_vec(cfg): Sets a vector used to scale the noise added to the observations.
-        step(actions): Performs a simulation step with the given actions.
-        compute_observations(): Computes the observations.
-        reset_idx(env_ids): Resets the environment for the specified environment IDs.
-    '''
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
         self.last_feet_z = 0.05
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
+        self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
+        self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
         self.compute_observations()
 
     def _push_robots(self):
@@ -100,61 +41,49 @@ class ZqFreeEnv(LeggedRobot):
 
     def  _get_phase(self):
         cycle_time = self.cfg.rewards.cycle_time
-        phase = self.episode_length_buf * self.dt / cycle_time
+        phase = self.episode_length_buf * self.dt / cycle_time * 2.
+        # phase = self.ref_count * self.dt * self.cfg.commands.step_freq * 2.
         return phase
 
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
+        # sin_pos = torch.sin(2 * torch.pi * phase)
+        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
-        stance_mask[:, 1] = sin_pos >= 0
+        stance_mask[:, 1] = (torch.floor(phase) + 1) % 2
         # right foot stance
-        stance_mask[:, 0] = sin_pos < 0
+        stance_mask[:, 0] = torch.floor(phase) % 2
         # Double support phase
-        stance_mask[torch.abs(sin_pos) < 0.1] = 1
-
+        # stance_mask[torch.abs(sin_pos) < 0.1] = 1
+        # print(stance_mask[0])
         return stance_mask
-    
 
     def compute_ref_state(self):
         phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos_l = sin_pos.clone()
-        sin_pos_r = sin_pos.clone()
+        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        mask_right = (torch.floor(phase) + 1) % 2
+        mask_left = torch.floor(phase) % 2
+        cos_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2  # 得到一条从0开始增加，频率为step_freq，振幅0～1的曲线，接地比较平滑
+        self.cos_pos[:, 0] = cos_pos * mask_right
+        self.cos_pos[:, 1] = cos_pos * mask_left
+
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
-        scale_2 = 1.8 * scale_1
-        scale_3 = scale_2 - scale_1
+        scale_2 = 2 * scale_1
 
-        self.ref_dof_pos[:, 0] = self.default_dof_pos[0, 0]
-        self.ref_dof_pos[:, 1] = self.default_dof_pos[0, 1]
-        self.ref_dof_pos[:, 5] = self.default_dof_pos[0, 5]
-        self.ref_dof_pos[:, 6] = self.default_dof_pos[0, 6]
-
+        self.ref_dof_pos[:, :] = self.default_dof_pos[0, :]
         # right foot stance phase set to default joint pos
-        sin_pos_r[sin_pos_r < 0] = 0
-        self.ref_dof_pos[:, 2] = sin_pos_r * scale_1 + self.default_dof_pos[0, 2]
-        self.ref_dof_pos[:, 3] = -sin_pos_r * scale_2 + self.default_dof_pos[0, 3]
-        self.ref_dof_pos[:, 4] = sin_pos_r * scale_3 + self.default_dof_pos[0, 4]
+        self.ref_dof_pos[:, 2] += self.cos_pos[:, 0] * scale_1
+        self.ref_dof_pos[:, 3] += -self.cos_pos[:, 0] * scale_2
+        self.ref_dof_pos[:, 4] += self.cos_pos[:, 0] * scale_1
         # left foot stance phase set to default joint pos
-        sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, 7] = -sin_pos_l * scale_1 + self.default_dof_pos[0, 7]
-        self.ref_dof_pos[:, 8] = sin_pos_l * scale_2 + self.default_dof_pos[0, 8]
-        self.ref_dof_pos[:, 9] = -sin_pos_l * scale_3 + self.default_dof_pos[0, 9]
-        # Double support phase
-        # self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
-
-        self.ref_action = (1/self.cfg.control.action_scale) * self.ref_dof_pos
-        #
-        # mask = self._get_gait_phase()
-        # print('%d, 右脚=%d, 左脚=%d, 2=%.3f 3=%.3f 4=%.3f 7=%.3f 8=%.3f 9=%.3f' % (self.episode_length_buf[0],
-        #       mask[0, 0], mask[0, 1],
-        #       self.ref_dof_pos[0, 2], self.ref_dof_pos[0, 3], self.ref_dof_pos[0, 4],
-        #       self.ref_dof_pos[0, 7], self.ref_dof_pos[0, 8], self.ref_dof_pos[0, 9]))
-
+        self.ref_dof_pos[:, 8] += self.cos_pos[:, 1] * scale_1
+        self.ref_dof_pos[:, 9] += -self.cos_pos[:, 1] * scale_2
+        self.ref_dof_pos[:, 10] += self.cos_pos[:, 1] * scale_1
+        # print(self.ref_dof_pos[0])
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -176,7 +105,6 @@ class ZqFreeEnv(LeggedRobot):
                 "Terrain mesh type not recognised. Allowed types are [None, plane, heightfield, trimesh]")
         self._create_envs()
 
-
     def _get_noise_scale_vec(self, cfg):
         """ Sets a vector used to scale the noise added to the observations.
             [NOTE]: Must be adapted when changing the observations structure
@@ -188,17 +116,17 @@ class ZqFreeEnv(LeggedRobot):
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
         noise_vec = torch.zeros(
-            self.cfg.env.num_single_obs, device=self.device)
+            self.cfg.env.num_observations, device=self.device)
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_vec[0: 5] = 0.  # commands
-        noise_vec[5: 15] = noise_scales.dof_pos * self.obs_scales.dof_pos
-        noise_vec[15: 25] = noise_scales.dof_vel * self.obs_scales.dof_vel
-        noise_vec[25: 35] = 0.  # previous actions
-        noise_vec[35: 38] = noise_scales.ang_vel * self.obs_scales.ang_vel   # ang vel
-        noise_vec[38: 41] = noise_scales.quat * self.obs_scales.quat         # euler x,y
-        return noise_vec
+        noise_vec[5: 8] = noise_scales.ang_vel * self.obs_scales.ang_vel   # ang vel
+        noise_vec[8: 11] = noise_scales.quat * self.obs_scales.quat         # euler x,y
+        noise_vec[11: 23] = noise_scales.dof_pos * self.obs_scales.dof_pos
+        noise_vec[23: 35] = noise_scales.dof_vel * self.obs_scales.dof_vel
+        noise_vec[35: 47] = 0.  # previous actions
 
+        return noise_vec
 
     def step(self, actions):
         if self.cfg.env.use_ref_actions:
@@ -209,7 +137,6 @@ class ZqFreeEnv(LeggedRobot):
         actions = (1 - delay) * actions + delay * self.actions
         actions += self.cfg.domain_rand.dynamic_randomization * torch.randn_like(actions) * actions
         return super().step(actions)
-
 
     def compute_observations(self):
 
@@ -225,21 +152,19 @@ class ZqFreeEnv(LeggedRobot):
         #     stance_mask[0, 0], stance_mask[0, 1],
         #     contact_mask[0, 0], contact_mask[0, 1]))
 
-        self.command_input = torch.cat(
-            (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
-        
         q = (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos
         dq = self.dof_vel * self.obs_scales.dof_vel
         
         diff = self.dof_pos - self.ref_dof_pos
 
         self.privileged_obs_buf = torch.cat((
-            self.command_input,  # 2 + 3
+            self.cos_pos,  # 2
+            self.commands[:, :3] * self.commands_scale,  # 3
             (self.dof_pos - self.default_joint_pd_target) * \
-            self.obs_scales.dof_pos,  # 12  10
-            self.dof_vel * self.obs_scales.dof_vel,  # 12  10
-            self.actions,  # 12  10
-            diff,  # 12  10
+            self.obs_scales.dof_pos,  # 12
+            self.dof_vel * self.obs_scales.dof_vel,  # 12
+            self.actions,  # 12
+            diff,  # 12
             self.base_lin_vel * self.obs_scales.lin_vel,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
@@ -251,13 +176,14 @@ class ZqFreeEnv(LeggedRobot):
             contact_mask,  # 2
         ), dim=-1)
 
-        obs_buf = torch.cat((
-            self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
-            q,    # 12D  10
-            dq,  # 12D  10
-            self.actions,   # 12D  10
+        self.obs_buf = torch.cat((
+            self.cos_pos,  # 2
+            self.commands[:, :3] * self.commands_scale,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
+            q,    # 12D
+            dq,  # 12D
+            self.actions,   # 12D
         ), dim=-1)
 
         if self.cfg.terrain.measure_heights:
@@ -265,25 +191,25 @@ class ZqFreeEnv(LeggedRobot):
             self.privileged_obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
         
         if self.add_noise:  
-            obs_now = obs_buf.clone() + torch.randn_like(obs_buf) * self.noise_scale_vec * self.cfg.noise.noise_level
-        else:
-            obs_now = obs_buf.clone()
-        self.obs_history.append(obs_now)
-        self.critic_history.append(self.privileged_obs_buf)
+            # obs_now = obs_buf.clone() + torch.randn_like(obs_buf) * self.noise_scale_vec * self.cfg.noise.noise_level
+            self.obs_buf += torch.randn_like(self.obs_buf) * self.noise_scale_vec * self.cfg.noise.noise_level
 
+        if torch.isnan(self.obs_buf).any():
+            self.obs_buf = torch.nan_to_num(self.obs_buf, nan=0.0001)
+        if torch.isnan(self.privileged_obs_buf).any():
+            self.privileged_obs_buf = torch.nan_to_num(self.privileged_obs_buf, nan=0.0001)
 
-        obs_buf_all = torch.stack([self.obs_history[i]
-                                   for i in range(self.obs_history.maxlen)], dim=1)  # N,T,K
+    # def reset_idx(self, env_ids):
+    #     super().reset_idx(env_ids)
+    #     for i in range(self.obs_history.maxlen):
+    #         self.obs_history[i][env_ids] *= 0
+    #     for i in range(self.critic_history.maxlen):
+    #         self.critic_history[i][env_ids] *= 0
 
-        self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)  # N, T*K
-        self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
-
-    def reset_idx(self, env_ids):
-        super().reset_idx(env_ids)
-        for i in range(self.obs_history.maxlen):
-            self.obs_history[i][env_ids] *= 0
-        for i in range(self.critic_history.maxlen):
-            self.critic_history[i][env_ids] *= 0
+    def check_termination(self):
+        super().check_termination()
+        self.reset_buf2 = self.root_states[:, 2] < self.cfg.asset.terminate_body_height  # 0.3!!!!!!!!!!!!!!!!!
+        self.reset_buf |= self.reset_buf2
 
 # ================================================ Rewards ================================================== #
     def _reward_joint_pos(self):
@@ -478,7 +404,7 @@ class ZqFreeEnv(LeggedRobot):
         swing_mask = 1 - self._get_gait_phase()
 
         # feet height should be closed to target feet height at the peak
-        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.03
+        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
         rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
         self.feet_height *= ~contact
         return rew_pos

@@ -43,7 +43,7 @@ import torch
 from deploy.utils.logger import SimpleLogger
 
 class cmd:
-    vx = 0.5  # 0.5
+    vx = 0.0  # 0.5
     vy = 0.  # 0.
     dyaw = 0.0  # 0.05
 

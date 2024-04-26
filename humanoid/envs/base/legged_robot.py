@@ -99,6 +99,7 @@ class LeggedRobot(BaseTask):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
+            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -146,6 +147,7 @@ class LeggedRobot(BaseTask):
 
         self.last_last_actions[:] = torch.clone(self.last_actions[:])
         self.last_actions[:] = self.actions[:]
+        self.last_dof_pos[:] = self.dof_pos[:]
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_root_vel[:] = self.root_states[:, 7:13]
         self.last_rigid_state[:] = self.rigid_state[:]
@@ -384,11 +386,19 @@ class LeggedRobot(BaseTask):
         else:
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
+            #self.root_states[env_ids, 3:7] += torch_rand_float(-0.5, 0.5, (len(env_ids), 4), device=self.device) # xy position within 1m of the center
+
+            #rpy = torch_rand_float(-.5, .5, (len(env_ids), 3), device=self.device)
+            #for index, i in enumerate(env_ids):
+                #print("Index is: ", index, "i is: ", i)
+                #self.root_states[i, 3:7] = quat_from_euler_xyz(rpy[index, 0], rpy[index, 1], rpy[index, 2])
+
+
         # base velocities
         # self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
         if self.cfg.asset.fix_base_link:
             self.root_states[env_ids, 7:13] = 0
-            self.root_states[env_ids, 2] += 1.8
+            self.root_states[env_ids, 2] += 1.0
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self.root_states),
@@ -447,12 +457,13 @@ class LeggedRobot(BaseTask):
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
-        self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
+        # self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
+        self.dof_vel = torch.zeros_like(self.dof_pos)
         self.base_quat = self.root_states[:, 3:7]
         self.base_euler_xyz = get_euler_xyz_tensor(self.base_quat)
 
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
-        self.rigid_state = gymtorch.wrap_tensor(rigid_body_state).view(self.num_envs, 11, 13)   # 13 13
+        self.rigid_state = gymtorch.wrap_tensor(rigid_body_state).view(self.num_envs, 13, 13)   # 13 13
 
         # initialize some data used later on
         self.common_step_counter = 0
@@ -467,6 +478,7 @@ class LeggedRobot(BaseTask):
         self.last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_last_actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         self.last_rigid_state = torch.zeros_like(self.rigid_state)
+        self.last_dof_pos = torch.zeros_like(self.dof_pos)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.last_root_vel = torch.zeros_like(self.root_states[:, 7:13])
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
@@ -504,14 +516,14 @@ class LeggedRobot(BaseTask):
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
         self.default_joint_pd_target = self.default_dof_pos.clone()
-        self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
-        self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
-        for _ in range(self.cfg.env.frame_stack):
-            self.obs_history.append(torch.zeros(
-                self.num_envs, self.cfg.env.num_single_obs, dtype=torch.float, device=self.device))
-        for _ in range(self.cfg.env.c_frame_stack):
-            self.critic_history.append(torch.zeros(
-                self.num_envs, self.cfg.env.single_num_privileged_obs, dtype=torch.float, device=self.device))
+        # self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
+        # self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
+        # for _ in range(self.cfg.env.frame_stack):
+        #     self.obs_history.append(torch.zeros(
+        #         self.num_envs, self.cfg.env.num_single_obs, dtype=torch.float, device=self.device))
+        # for _ in range(self.cfg.env.c_frame_stack):
+        #     self.critic_history.append(torch.zeros(
+        #         self.num_envs, self.cfg.env.single_num_privileged_obs, dtype=torch.float, device=self.device))
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, which will be called to compute the total reward.
@@ -611,8 +623,7 @@ class LeggedRobot(BaseTask):
         asset_options.thickness = self.cfg.asset.thickness
         asset_options.disable_gravity = self.cfg.asset.disable_gravity
 
-        # robot_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
-        robot_asset = self.gym.load_mjcf(self.sim, asset_root, asset_file, asset_options)
+        robot_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
         self.num_dof = self.gym.get_asset_dof_count(robot_asset)
         self.num_bodies = self.gym.get_asset_rigid_body_count(robot_asset)
         dof_props_asset = self.gym.get_asset_dof_properties(robot_asset)
@@ -660,7 +671,7 @@ class LeggedRobot(BaseTask):
             self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
             body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
             body_props = self._process_rigid_body_props(body_props, i)
-            self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
+            self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=False)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
 

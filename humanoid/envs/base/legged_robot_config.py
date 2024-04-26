@@ -141,7 +141,7 @@ class LeggedRobotCfg(BaseConfig):
             dof_vel = -0.
             dof_acc = -2.5e-7
             base_height = -0. 
-            feet_air_time =  1.0
+            feet_air_time = 1.0
             collision = -1.
             feet_stumble = -0.0 
             action_rate = -0.
@@ -187,15 +187,15 @@ class LeggedRobotCfg(BaseConfig):
         class physx:
             num_threads = 10
             solver_type = 1  # 0: pgs, 1: tgs
-            num_position_iterations = 4
-            num_velocity_iterations = 0
+            num_position_iterations = 6
+            num_velocity_iterations = 1
             contact_offset = 0.01  # [m]
             rest_offset = 0.0   # [m]
             bounce_threshold_velocity = 0.5 #0.5 [m/s]
             max_depenetration_velocity = 1.0
             max_gpu_contact_pairs = 2**23 #2**24 -> needed for 8000 envs and more
             default_buffer_size_multiplier = 5
-            contact_collection = 2 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
+            contact_collection = 1 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
 
 class LeggedRobotCfgPPO(BaseConfig):
     seed = 1
