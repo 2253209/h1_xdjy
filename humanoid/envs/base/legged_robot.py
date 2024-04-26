@@ -516,14 +516,14 @@ class LeggedRobot(BaseTask):
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
         self.default_joint_pd_target = self.default_dof_pos.clone()
-        # self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
-        # self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
-        # for _ in range(self.cfg.env.frame_stack):
-        #     self.obs_history.append(torch.zeros(
-        #         self.num_envs, self.cfg.env.num_single_obs, dtype=torch.float, device=self.device))
-        # for _ in range(self.cfg.env.c_frame_stack):
-        #     self.critic_history.append(torch.zeros(
-        #         self.num_envs, self.cfg.env.single_num_privileged_obs, dtype=torch.float, device=self.device))
+        self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
+        self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
+        for _ in range(self.cfg.env.frame_stack):
+            self.obs_history.append(torch.zeros(
+                self.num_envs, self.cfg.env.num_single_obs, dtype=torch.float, device=self.device))
+        for _ in range(self.cfg.env.c_frame_stack):
+            self.critic_history.append(torch.zeros(
+                self.num_envs, self.cfg.env.single_num_privileged_obs, dtype=torch.float, device=self.device))
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, which will be called to compute the total reward.
