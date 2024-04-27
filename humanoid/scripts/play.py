@@ -32,6 +32,7 @@
 import os
 import cv2
 import numpy as np
+from deploy.utils.logger import SimpleLogger, get_title_short
 from isaacgym import gymapi
 from humanoid import LEGGED_GYM_ROOT_DIR
 
@@ -43,6 +44,7 @@ from isaacgym.torch_utils import *
 import torch
 from tqdm import tqdm
 from datetime import datetime
+import time
 
 
 def play(args):
@@ -88,6 +90,9 @@ def play(args):
     joint_index = 1  # which joint is used for logging
     max_steps = 10000
     stop_state_log = 1000  # number of steps before plotting states
+    sloger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/play_log', get_title_short())
+    t1 = time.time()
+    t0 = 0
 
     if RENDER:
         camera_properties = gymapi.CameraProperties()
@@ -125,6 +130,7 @@ def play(args):
             env.commands[:, 3] = 0.
 
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
+        sloger.save(torch.cat([obs, env.dof_vel2], dim=1), i, t1 - t0)
 
         if RENDER:
             env.gym.fetch_results(env.sim, True)

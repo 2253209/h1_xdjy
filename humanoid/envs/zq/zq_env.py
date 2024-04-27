@@ -155,14 +155,14 @@ class ZqFreeEnv(LeggedRobot):
         self.render()
         # 下行delay：延迟action发送到sim里的时间，目前是60ms
         # action_delayed = self.action_history.popleft()
-        index_act = random.randint(4, 20)
-        action_delayed_0 = self.action_history[0]
-        action_delayed_1 = self.action_history[1]
-        action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
-        self.action_history.append(actions)
+        # index_act = random.randint(4, 20)
+        # action_delayed_0 = self.action_history[0]
+        # action_delayed_1 = self.action_history[1]
+        # action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
+        # self.action_history.append(actions)
         for _ in range(self.cfg.control.decimation):
-            # self.torques = self._compute_torques(self.actions).view(self.torques.shape)
-            self.torques = self._compute_torques(action_delayed).view(self.torques.shape)  # 下发扭矩，但换成delayed actions
+            self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+            # self.torques = self._compute_torques(action_delayed).view(self.torques.shape)  # 下发扭矩，但换成delayed actions
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
 
             self.gym.simulate(self.sim)
@@ -367,11 +367,12 @@ class ZqFreeEnv(LeggedRobot):
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        left_yaw_roll = joint_diff[:, :2]
-        right_yaw_roll = joint_diff[:, 6: 8]
-        yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
-        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        # left_yaw_roll = joint_diff[:, :2]
+        # right_yaw_roll = joint_diff[:, 6: 8]
+        # yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
+        # yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+        # return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        return -torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):
         """
