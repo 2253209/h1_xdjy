@@ -50,7 +50,7 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        queue_len_obs = 3
+        queue_len_obs = 6
         queue_len_act = 3
 
     class viewer(LeggedRobotCfg.viewer):
@@ -80,8 +80,8 @@ class ZqCfg(LeggedRobotCfg):
         terminate_body_height = 0.4
 
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
         curriculum = False
         # rough terrain only:
         measure_heights = False
