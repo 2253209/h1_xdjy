@@ -6,9 +6,9 @@ from isaacgym import gymtorch, gymapi
 
 import torch
 from humanoid.envs import LeggedRobot
-
-from humanoid.utils.terrain import  HumanoidTerrain
-# from collections import deque
+from humanoid.utils.terrain import HumanoidTerrain
+from collections import deque
+from numpy import random
 
 
 class ZqFreeEnv(LeggedRobot):
@@ -17,9 +17,22 @@ class ZqFreeEnv(LeggedRobot):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
         self.last_feet_z = 0.05
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
-        self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
+        # 观察值的上行delay
+        self.obs_history = deque(maxlen=self.cfg.env.queue_len_obs)
+        for _ in range(self.cfg.env.queue_len_obs):
+            self.obs_history.append(torch.zeros(
+                self.num_envs, self.cfg.env.num_observations, dtype=torch.float, device=self.device))
+        # action的下行delay
+        self.action_history = deque(maxlen=self.cfg.env.queue_len_act)
+        for _ in range(self.cfg.env.queue_len_act):
+            self.action_history.append(torch.zeros(
+                self.num_envs, self.num_actions, dtype=torch.float, device=self.device))
+        for i in range(self.action_history.maxlen):
+            self.action_history[i][:] = self.default_dof_pos[:]
+
+        self.reset_idx(torch.tensor(range(self.num_envs), device=self.device))
         self.compute_observations()
 
     def _push_robots(self):
@@ -40,9 +53,7 @@ class ZqFreeEnv(LeggedRobot):
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def  _get_phase(self):
-        cycle_time = self.cfg.rewards.cycle_time
-        phase = self.episode_length_buf * self.dt / cycle_time * 2.
-        # phase = self.ref_count * self.dt * self.cfg.commands.step_freq * 2.
+        phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
         return phase
 
     def _get_gait_phase(self):
@@ -63,7 +74,7 @@ class ZqFreeEnv(LeggedRobot):
 
     def compute_ref_state(self):
         phase = self._get_phase()
-        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         mask_right = (torch.floor(phase) + 1) % 2
         mask_left = torch.floor(phase) % 2
         cos_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2  # 得到一条从0开始增加，频率为step_freq，振幅0～1的曲线，接地比较平滑
@@ -132,11 +143,53 @@ class ZqFreeEnv(LeggedRobot):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
             # actions = self.ref_action
+
         # dynamic randomization
-        delay = torch.rand((self.num_envs, 1), device=self.device)
-        actions = (1 - delay) * actions + delay * self.actions
-        actions += self.cfg.domain_rand.dynamic_randomization * torch.randn_like(actions) * actions
-        return super().step(actions)
+        # delay = torch.rand((self.num_envs, 1), device=self.device)
+        # actions = (1 - delay) * actions + delay * self.actions
+        # actions += self.cfg.domain_rand.dynamic_randomization * torch.randn_like(actions) * actions
+        # return super().step(actions)
+        clip_actions = self.cfg.normalization.clip_actions
+        self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
+        # step physics and render each frame
+        self.render()
+        # 下行delay：延迟action发送到sim里的时间，目前是60ms
+        # action_delayed = self.action_history.popleft()
+        index_act = random.randint(4, 20)
+        action_delayed_0 = self.action_history[0]
+        action_delayed_1 = self.action_history[1]
+        action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
+        self.action_history.append(actions)
+        for _ in range(self.cfg.control.decimation):
+            # self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+            self.torques = self._compute_torques(action_delayed).view(self.torques.shape)  # 下发扭矩，但换成delayed actions
+            self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+
+            self.gym.simulate(self.sim)
+            if self.device == 'cpu':
+                self.gym.fetch_results(self.sim, True)
+            self.gym.refresh_dof_state_tensor(self.sim)
+            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
+        self.post_physics_step()
+
+        # return clipped obs, clipped states (None), rewards, dones and infos
+        clip_obs = self.cfg.normalization.clip_observations
+        self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
+        if self.privileged_obs_buf is not None:
+            self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+
+        # 上行延迟：延迟获取obs,但观察到当前帧的action。
+        # obs_delayed = self.obs_history.popleft()
+        self.obs_history.append(torch.clone(self.obs_buf))
+        index_obs = random.randint(4, 20)
+        obs_delayed_0 = self.obs_history[0]
+        obs_delayed_1 = self.obs_history[1]
+        obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
+
+        # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
+        self.obs_buf[:, 11:self.num_obs-self.num_actions] = obs_delayed[:, 11:self.num_obs-self.num_actions]
+
+        return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
     def compute_observations(self):
 
@@ -199,12 +252,16 @@ class ZqFreeEnv(LeggedRobot):
         if torch.isnan(self.privileged_obs_buf).any():
             self.privileged_obs_buf = torch.nan_to_num(self.privileged_obs_buf, nan=0.0001)
 
-    # def reset_idx(self, env_ids):
-    #     super().reset_idx(env_ids)
-    #     for i in range(self.obs_history.maxlen):
-    #         self.obs_history[i][env_ids] *= 0
-    #     for i in range(self.critic_history.maxlen):
-    #         self.critic_history[i][env_ids] *= 0
+    def reset_idx(self, env_ids):
+        super().reset_idx(env_ids)
+        # for i in range(self.obs_history.maxlen):
+        #     self.obs_history[i][env_ids] *= 0
+        # for i in range(self.critic_history.maxlen):
+        #     self.critic_history[i][env_ids] *= 0
+        for i in range(self.action_history.maxlen):
+            self.action_history[i][env_ids] = self.default_dof_pos
+
+
 
     def check_termination(self):
         super().check_termination()

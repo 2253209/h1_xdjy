@@ -306,9 +306,9 @@ class Deploy:
                                        self.cfg.env.joint_limit_max)
 
                 # 5.2 插值平滑输出
-                if key_comm.timestep < count_max_merge:
-                    action_robot[:] = (pos_0[:] / count_max_merge * (count_max_merge - key_comm.timestep - 1)
-                                       + action_robot[:] / count_max_merge * (key_comm.timestep + 1))
+                # if key_comm.timestep < count_max_merge:
+                #     action_robot[:] = (pos_0[:] / count_max_merge * (count_max_merge - key_comm.timestep - 1)
+                #                        + action_robot[:] / count_max_merge * (key_comm.timestep + 1))
 
                 # 5.3 将计算出来的真实电机值, 通过LCM发送给机器人
                 if key_comm.stepCalibrate:
@@ -345,7 +345,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not args.load_model:
-        args.load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_4-26-4800.pt'
+        args.load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_4-26-3.pt'
 
     deploy = Deploy(DeployCfg(), args.load_model)
     deploy.run_robot()

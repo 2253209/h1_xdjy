@@ -50,6 +50,8 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
+        queue_len_obs = 3
+        queue_len_act = 3
 
     class viewer(LeggedRobotCfg.viewer):
         ref_env = 0
@@ -63,7 +65,7 @@ class ZqCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/ZQ_Humanoid/urdf/ZQ_Humanoid_long_foot.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/ZQ_Humanoid/urdf/ZQ_Humanoid.urdf'
 
         name = "zq01"
         foot_name = "foot"
@@ -78,8 +80,8 @@ class ZqCfg(LeggedRobotCfg):
         terminate_body_height = 0.4
 
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
         curriculum = False
         # rough terrain only:
         measure_heights = False
@@ -132,7 +134,7 @@ class ZqCfg(LeggedRobotCfg):
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 2, 'JOINT_Z6': 2}
 
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.1
+        action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 2  # 100hz
 
@@ -191,7 +193,7 @@ class ZqCfg(LeggedRobotCfg):
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.30    # rad
         target_feet_height = 0.1       # m
-        cycle_time = 0.66                # sec
+        step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -241,7 +243,7 @@ class ZqCfg(LeggedRobotCfg):
 
 
 class ZqCfgPPO(LeggedRobotCfgPPO):
-    seed = 5
+    seed = -1
     runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
 
     class policy:
