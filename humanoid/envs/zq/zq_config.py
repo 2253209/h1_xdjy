@@ -177,7 +177,7 @@ class ZqCfg(LeggedRobotCfg):
         class ranges:
 
             lin_vel_x = [-0.3, 0.5]  # min max [m/s]
-            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
+            lin_vel_y = [-0.0, 0.0]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3]    # min max [rad/s]
             heading = [-3.14, 3.14]
 
@@ -192,12 +192,12 @@ class ZqCfg(LeggedRobotCfg):
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.30    # rad
-        target_feet_height = 0.1       # m
+        target_feet_height = 0.06       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
-        tracking_sigma = 0.35
+        tracking_sigma = 5
         max_contact_force = 700  # forces above this value are penalized
 
         class scales:
@@ -213,7 +213,7 @@ class ZqCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
+            tracking_lin_vel = 2.2
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2

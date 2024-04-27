@@ -261,11 +261,13 @@ class ZqFreeEnv(LeggedRobot):
         for i in range(self.action_history.maxlen):
             self.action_history[i][env_ids] = self.default_dof_pos
 
-
-
     def check_termination(self):
         super().check_termination()
-        self.reset_buf2 = self.root_states[:, 2] < self.cfg.asset.terminate_body_height  # 0.3!!!!!!!!!!!!!!!!!
+        stance_mask = self._get_gait_phase()
+        measured_heights = torch.sum(
+            self.rigid_state[:, self.feet_indices, 2] * stance_mask, dim=1) / torch.sum(stance_mask, dim=1)
+        base_height = self.root_states[:, 2] - (measured_heights - 0.05)
+        self.reset_buf2 = base_height < self.cfg.asset.terminate_body_height  # 0.3!!!!!!!!!!!!!!!!!
         self.reset_buf |= self.reset_buf2
 
 # ================================================ Rewards ================================================== #
@@ -429,8 +431,9 @@ class ZqFreeEnv(LeggedRobot):
         Tracks linear velocity commands along the xy axes. 
         Calculates a reward based on how closely the robot's linear velocity matches the commanded values.
         """
-        lin_vel_error = torch.sum(torch.square(
-            self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        # lin_vel_error = torch.sum(torch.square(
+        #     self.commands[:, ：2] - self.base_lin_vel[:, ：2]), dim=1)
+        lin_vel_error = torch.square(self.commands[:, 0] - self.base_lin_vel[:, 0])
         return torch.exp(-lin_vel_error * self.cfg.rewards.tracking_sigma)
 
     def _reward_tracking_ang_vel(self):
