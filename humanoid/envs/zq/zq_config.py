@@ -130,8 +130,8 @@ class ZqCfg(LeggedRobotCfg):
         # PD Drive parameters:
         stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, 'JOINT_Y6': 50,
                      'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, 'JOINT_Z6': 50}
-        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 2, 'JOINT_Y6': 2,
-                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 2, 'JOINT_Z6': 2}
+        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, 'JOINT_Y6': 4,
+                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.1
@@ -192,12 +192,12 @@ class ZqCfg(LeggedRobotCfg):
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.30    # rad
-        target_feet_height = 0.1       # m
+        target_feet_height = 0.06       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
-        tracking_sigma = 0.35
+        tracking_sigma = 5.
         max_contact_force = 700  # forces above this value are penalized
 
         class scales:
@@ -213,8 +213,8 @@ class ZqCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
-            tracking_ang_vel = 1.1
+            tracking_lin_vel = 2.2
+            tracking_ang_vel = 2.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
             track_vel_hard = 0.5
@@ -233,7 +233,7 @@ class ZqCfg(LeggedRobotCfg):
     class normalization:
         class obs_scales:
             lin_vel = 1.
-            ang_vel = 0.25
+            ang_vel = 1
             dof_pos = 1.
             dof_vel = 0.05
             quat = 1.
@@ -263,7 +263,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 60  # per iteration
-        max_iterations = 10001  # number of policy updates
+        max_iterations = 3001  # number of policy updates
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations
