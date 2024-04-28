@@ -204,7 +204,7 @@ class Zq1Cfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 1.6
+            joint_pos = 5.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
@@ -227,7 +227,8 @@ class Zq1Cfg(LeggedRobotCfg):
             base_acc = 0.2
             lin_vel_z = -2.0
             # energy
-            action_smoothness = -0.002
+            # action_smoothness = -0.002
+            action_rate = -0.01
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7

@@ -223,7 +223,7 @@ class ZqCfg(LeggedRobotCfg):
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = -1.2
+            base_height = 1.2
             base_acc = 0.2
             lin_vel_z = -2.0
             # energy
