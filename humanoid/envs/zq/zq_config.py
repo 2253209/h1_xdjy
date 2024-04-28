@@ -50,8 +50,10 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        queue_len_obs = 6
-        queue_len_act = 3
+        is_delay_obs = False  # 控制上行delay的开关
+        is_delay_act = False  # 控制下行delay的开关
+        queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
+        queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
     class viewer(LeggedRobotCfg.viewer):
         ref_env = 0
@@ -176,8 +178,8 @@ class ZqCfg(LeggedRobotCfg):
 
         class ranges:
 
-            lin_vel_x = [-0.3, 0.5]  # min max [m/s]
-            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
+            lin_vel_x = [-0.3, 0.6]  # min max [m/s]
+            lin_vel_y = [-0.0, 0.0]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3]    # min max [rad/s]
             heading = [-3.14, 3.14]
 
@@ -191,8 +193,8 @@ class ZqCfg(LeggedRobotCfg):
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.30    # rad
-        target_feet_height = 0.06       # m
+        target_joint_pos_scale = 0.50    # rad
+        target_feet_height = 0.1       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
@@ -202,7 +204,7 @@ class ZqCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 3.6
+            joint_pos = 1.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
@@ -213,16 +215,17 @@ class ZqCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 2.2
-            tracking_ang_vel = 2.1
+            tracking_lin_vel = 1.2
+            tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
             track_vel_hard = 0.5
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = 0.2
+            base_height = 1.2
             base_acc = 0.2
+            lin_vel_z = -2.0
             # energy
             action_smoothness = -0.002
             torques = -1e-5

@@ -16,6 +16,7 @@ class ZqFreeEnv(LeggedRobot):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
         self.last_feet_z = 0.05
+        self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device)
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
@@ -154,17 +155,17 @@ class ZqFreeEnv(LeggedRobot):
         # step physics and render each frame
         self.render()
         # 下行delay：延迟action发送到sim里的时间，目前是60ms
-        # action_delayed = self.action_history.popleft()
-        # index_act = random.randint(4, 20)
-        # action_delayed_0 = self.action_history[0]
-        # action_delayed_1 = self.action_history[1]
-        # action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
-        # self.action_history.append(actions)
+        if self.cfg.env.is_delay_act:
+            self.action_history.append(actions)
+            index_act = random.randint(4, 20)
+            action_delayed_0 = self.action_history[0]
+            action_delayed_1 = self.action_history[1]
+            action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
+            self.actions = torch.clone(action_delayed)
+
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions).view(self.torques.shape)
-            # self.torques = self._compute_torques(action_delayed).view(self.torques.shape)  # 下发扭矩，但换成delayed actions
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
-
             self.gym.simulate(self.sim)
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
@@ -179,15 +180,14 @@ class ZqFreeEnv(LeggedRobot):
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
 
         # 上行延迟：延迟获取obs,但观察到当前帧的action。
-        # obs_delayed = self.obs_history.popleft()
-        self.obs_history.append(torch.clone(self.obs_buf))
-        index_obs = random.randint(4, 20)
-        obs_delayed_0 = self.obs_history[0]
-        obs_delayed_1 = self.obs_history[1]
-        obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
-
-        # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
-        self.obs_buf[:, 11:self.num_obs-self.num_actions] = obs_delayed[:, 11:self.num_obs-self.num_actions]
+        if self.cfg.env.is_delay_obs:
+            self.obs_history.append(torch.clone(self.obs_buf))
+            index_obs = random.randint(4, 20)
+            obs_delayed_0 = self.obs_history[0]
+            obs_delayed_1 = self.obs_history[1]
+            obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
+            # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
+            self.obs_buf[:, 11:self.num_obs-self.num_actions] = obs_delayed[:, 11:self.num_obs-self.num_actions]
 
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
@@ -367,11 +367,13 @@ class ZqFreeEnv(LeggedRobot):
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        # left_yaw_roll = joint_diff[:, :2]
-        # right_yaw_roll = joint_diff[:, 6: 8]
-        # yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
-        # yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
-        # return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        '''
+        left_yaw_roll = joint_diff[:, :2]
+        right_yaw_roll = joint_diff[:, 6: 8]
+        yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
+        yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
+        return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
+        '''
         return -torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):
@@ -395,6 +397,9 @@ class ZqFreeEnv(LeggedRobot):
         rew = torch.exp(-torch.norm(root_acc, dim=1) * 3)
         return rew
 
+    def _reward_lin_vel_z(self):
+        # Penalize z axis base linear velocity
+        return torch.square(self.base_lin_vel[:, 2])
 
     def _reward_vel_mismatch_exp(self):
         """
@@ -468,6 +473,8 @@ class ZqFreeEnv(LeggedRobot):
         rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
         rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
         self.feet_height *= ~contact
+        if self.episode_length_buf[0]==0:
+            print(self.feet_height[0])
         return rew_pos
 
     def _reward_low_speed(self):
