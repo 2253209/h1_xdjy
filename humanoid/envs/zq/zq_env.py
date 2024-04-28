@@ -156,12 +156,12 @@ class ZqFreeEnv(LeggedRobot):
         self.render()
         # 下行delay：延迟action发送到sim里的时间，目前是60ms
         if self.cfg.env.is_delay_act:
-            self.action_history.append(actions)
+            self.action_history.append(torch.clone(self.actions))
             index_act = random.randint(4, 20)
             action_delayed_0 = self.action_history[0]
             action_delayed_1 = self.action_history[1]
             action_delayed = action_delayed_0 * (20-index_act)/20 + action_delayed_1 * index_act/20
-            self.actions = torch.clone(action_delayed)
+            self.actions = action_delayed
 
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions).view(self.torques.shape)
@@ -459,7 +459,6 @@ class ZqFreeEnv(LeggedRobot):
         """
         # Compute feet contact mask
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
-
         # Get the z-position of the feet and compute the change in z-position
         feet_z = self.rigid_state[:, self.feet_indices, 2] - 0.05
         delta_z = feet_z - self.last_feet_z
@@ -470,13 +469,10 @@ class ZqFreeEnv(LeggedRobot):
         swing_mask = 1 - self._get_gait_phase()
 
         # feet height should be closed to target feet height at the peak
-        # rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
-        # rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
-        rew_pos = torch.sum(torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) * swing_mask, dim=1)
+        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.1
+        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
         self.feet_height *= ~contact
-        # print(self.feet_height[0], end=' ')
-        # print(rew_pos[0])
-        return -rew_pos
+        return rew_pos
 
     def _reward_low_speed(self):
         """

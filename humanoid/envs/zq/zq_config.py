@@ -194,7 +194,7 @@ class ZqCfg(LeggedRobotCfg):
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.50    # rad
-        target_feet_height = 0.15       # m
+        target_feet_height = 0.1       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
@@ -204,8 +204,8 @@ class ZqCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 1.6
-            feet_clearance = 5.
+            joint_pos = 5.6
+            feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
             feet_air_time = 1.
