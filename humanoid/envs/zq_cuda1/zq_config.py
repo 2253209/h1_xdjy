@@ -130,8 +130,8 @@ class Zq1Cfg(LeggedRobotCfg):
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, 'JOINT_Y6': 50,
-                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, 'JOINT_Z6': 50}
+        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 200, 'JOINT_Y6': 200,
+                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 200, 'JOINT_Z6': 200}
         damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, 'JOINT_Y6': 4,
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
 

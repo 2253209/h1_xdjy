@@ -50,8 +50,8 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        is_delay_obs = True  # 控制上行delay的开关
-        is_delay_act = True  # 控制下行delay的开关
+        is_delay_obs = False  # 控制上行delay的开关
+        is_delay_act = False  # 控制下行delay的开关
         queue_len_obs = 3   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
@@ -130,8 +130,8 @@ class ZqCfg(LeggedRobotCfg):
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, 'JOINT_Y6': 50,
-                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, 'JOINT_Z6': 50}
+        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 200, 'JOINT_Y6': 200,
+                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 200, 'JOINT_Z6': 200}
         damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, 'JOINT_Y6': 4,
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
 
