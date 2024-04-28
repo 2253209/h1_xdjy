@@ -31,7 +31,7 @@ import numpy as np
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 
-class ZqCfg(LeggedRobotCfg):
+class Zq1Cfg(LeggedRobotCfg):
     """
     Configuration class for the XBotL humanoid robot.
     """
@@ -51,8 +51,8 @@ class ZqCfg(LeggedRobotCfg):
         use_ref_actions = False
         env_spacing = 1.
         is_delay_obs = True  # 控制上行delay的开关
-        is_delay_act = True  # 控制下行delay的开关
-        queue_len_obs = 3   # 不可小于2，可以通过上面的is_delay_obs控制开关
+        is_delay_act = False  # 控制下行delay的开关
+        queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
     class viewer(LeggedRobotCfg.viewer):
@@ -245,7 +245,7 @@ class ZqCfg(LeggedRobotCfg):
         clip_actions = 18.
 
 
-class ZqCfgPPO(LeggedRobotCfgPPO):
+class Zq1CfgPPO(LeggedRobotCfgPPO):
     seed = -1
     runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
 
@@ -270,7 +270,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations
-        experiment_name = 'zq'
+        experiment_name = 'zq_cuda1'
         run_name = ''
         # load and resume
         resume = False

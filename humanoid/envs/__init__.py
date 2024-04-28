@@ -40,6 +40,9 @@ from .custom.humanoid_env import XBotLFreeEnv
 from .zq.zq_config import ZqCfg, ZqCfgPPO
 from .zq.zq_env import ZqFreeEnv
 
+from .zq_cuda1.zq_config import Zq1Cfg, Zq1CfgPPO
+from .zq_cuda1.zq_env import Zq1FreeEnv
+
 task_registry.register("humanoid_ppo", XBotLFreeEnv, XBotLCfg(), XBotLCfgPPO())
 task_registry.register("zq", ZqFreeEnv, ZqCfg(), ZqCfgPPO())
-
+task_registry.register("zq_cuda1", Zq1FreeEnv, Zq1Cfg(), Zq1CfgPPO())
