@@ -21,6 +21,7 @@ import torch
 from deploy.utils.logger import SimpleLogger, get_title_short
 
 def play(args):
+    args.task = 'zq'
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # override some parameters for testing
     env_cfg.env.num_envs = min(env_cfg.env.num_envs, 50)
@@ -41,7 +42,7 @@ def play(args):
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
 
-    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_4-28-6obs-trim.pt'
+    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_1.pt'
     policy = torch.jit.load(load_model)
     
     robot_index = 0 # which robot is used for logging
@@ -57,8 +58,10 @@ def play(args):
     t0 = 0
 
     for i in range(10*int(env.max_episode_length)):
+        # obs[:, -12:] = 0.
+        # print('obs_action:', obs[0, -12:])
         actions = policy(obs.detach())
-
+        # print('action:', actions[0])
         # actions[:, :] = env.default_dof_pos[0, :]
 
         # 保存play save
@@ -74,7 +77,7 @@ def play(args):
 
         obs, _, rews, dones, infos = env.step(actions.detach())
         obs = obs.to('cpu')
-        obs[:, 5:35] = 0.
+        # obs[:, 5:35] = 0.
         if RECORD_FRAMES:
             if i % 2:
                 filename = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'frames', f"{img_idx}.png")

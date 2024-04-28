@@ -122,8 +122,7 @@ def play(args):
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
 
     for i in tqdm(range(max_steps)):
-
-        actions = policy(obs.detach()) # * 0.
+        actions = policy(obs.detach())  # * 0.
         
         if FIX_COMMAND:
             env.commands[:, 0] = 0.    # 1.0
@@ -132,7 +131,9 @@ def play(args):
             env.commands[:, 3] = 0.
 
         obs, critic_obs, rews, dones, infos = env.step(actions.detach())
-        sloger.save(torch.cat([obs, env.dof_vel2], dim=1), i, t1 - t0)
+
+        actions_sc = env.actions * env.cfg.control.action_scale + env.default_dof_pos
+        sloger.save(torch.cat([obs, actions_sc], dim=1), i, t1 - t0)
 
         if RENDER:
             env.gym.fetch_results(env.sim, True)
