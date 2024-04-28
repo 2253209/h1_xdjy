@@ -50,9 +50,9 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        is_delay_obs = False  # 控制上行delay的开关
+        is_delay_obs = True  # 控制上行delay的开关
         is_delay_act = False  # 控制下行delay的开关
-        queue_len_obs = 3   # 不可小于2，可以通过上面的is_delay_obs控制开关
+        queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
     class viewer(LeggedRobotCfg.viewer):
@@ -194,7 +194,7 @@ class ZqCfg(LeggedRobotCfg):
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.50    # rad
-        target_feet_height = 0.1       # m
+        target_feet_height = 0.15       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
@@ -205,7 +205,7 @@ class ZqCfg(LeggedRobotCfg):
         class scales:
             # reference motion tracking
             joint_pos = 1.6
-            feet_clearance = 1.
+            feet_clearance = 5.
             feet_contact_number = 1.2
             # gait
             feet_air_time = 1.
@@ -223,11 +223,12 @@ class ZqCfg(LeggedRobotCfg):
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = 1.2
+            base_height = -1.2
             base_acc = 0.2
             lin_vel_z = -2.0
             # energy
-            action_smoothness = -0.002
+            # action_smoothness = -0.002
+            action_rate = -0.01
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7

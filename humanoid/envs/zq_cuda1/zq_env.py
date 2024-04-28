@@ -470,11 +470,12 @@ class Zq1FreeEnv(LeggedRobot):
         swing_mask = 1 - self._get_gait_phase()
 
         # feet height should be closed to target feet height at the peak
-        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
-        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        # rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
+        # rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        rew_pos = torch.sum(torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) * swing_mask, dim=1)
         self.feet_height *= ~contact
-        if self.episode_length_buf[0]==0:
-            print(self.feet_height[0])
+        # print(self.feet_height[0], end=' ')
+        # print(rew_pos[0])
         return rew_pos
 
     def _reward_low_speed(self):

@@ -187,7 +187,7 @@ class ZqFreeEnv(LeggedRobot):
             obs_delayed_1 = self.obs_history[1]
             obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
             # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
-            self.obs_buf[:, 11:self.num_obs-self.num_actions] = obs_delayed[:, 11:self.num_obs-self.num_actions]
+            self.obs_buf[:, 0:self.num_obs-self.num_actions] = obs_delayed[:, 0:self.num_obs-self.num_actions]
 
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
@@ -470,12 +470,13 @@ class ZqFreeEnv(LeggedRobot):
         swing_mask = 1 - self._get_gait_phase()
 
         # feet height should be closed to target feet height at the peak
-        rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
-        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        # rew_pos = torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) < 0.01
+        # rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        rew_pos = torch.sum(torch.abs(self.feet_height - self.cfg.rewards.target_feet_height) * swing_mask, dim=1)
         self.feet_height *= ~contact
-        if self.episode_length_buf[0]==0:
-            print(self.feet_height[0])
-        return rew_pos
+        # print(self.feet_height[0], end=' ')
+        # print(rew_pos[0])
+        return -rew_pos
 
     def _reward_low_speed(self):
         """
@@ -549,3 +550,7 @@ class ZqFreeEnv(LeggedRobot):
             self.actions + self.last_last_actions - 2 * self.last_actions), dim=1)
         term_3 = 0.05 * torch.sum(torch.abs(self.actions), dim=1)
         return term_1 + term_2 + term_3
+
+    def _reward_action_rate(self):
+        # Penalize changes in actions
+        return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
