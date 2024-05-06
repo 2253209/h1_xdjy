@@ -43,6 +43,11 @@ from .zq.zq_env import ZqFreeEnv
 from .zq_cuda1.zq_config import Zq1Cfg, Zq1CfgPPO
 from .zq_cuda1.zq_env import Zq1FreeEnv
 
+from .zq_10dof.zq_config import Zq10Cfg, Zq10CfgPPO
+from .zq_10dof.zq_env import Zq10FreeEnv
+
 task_registry.register("humanoid_ppo", XBotLFreeEnv, XBotLCfg(), XBotLCfgPPO())
 task_registry.register("zq", ZqFreeEnv, ZqCfg(), ZqCfgPPO())
 task_registry.register("zq_cuda1", Zq1FreeEnv, Zq1Cfg(), Zq1CfgPPO())
+task_registry.register("zq_10dof", Zq10FreeEnv, Zq10Cfg(), Zq10CfgPPO())
+

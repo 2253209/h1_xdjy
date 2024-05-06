@@ -31,7 +31,7 @@ import numpy as np
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 
-class ZqCfg(LeggedRobotCfg):
+class Zq10Cfg(LeggedRobotCfg):
     """
     Configuration class for the XBotL humanoid robot.
     """
@@ -39,13 +39,13 @@ class ZqCfg(LeggedRobotCfg):
         # change the observation dim
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 47  # 47
+        num_single_obs = 41  # 47 2+3+3+3+10+10+10
         # num_observations = int(frame_stack * num_single_obs)
-        num_observations = 47
-        single_num_privileged_obs = 73  # 73
+        num_observations = 41
+        single_num_privileged_obs = 65  # 73
         # num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
-        num_privileged_obs = 73
-        num_actions = 12
+        num_privileged_obs = 65
+        num_actions = 10
         num_envs = 4096
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
@@ -67,10 +67,10 @@ class ZqCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/ZQ_Humanoid/urdf/ZQ_Humanoid_long_foot.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/ZQ_Humanoid/urdf/ZQ_Humanoid_10dof.urdf'
 
         name = "zq01"
-        foot_name = "foot"
+        foot_name = "5"
         knee_name = "4"
 
         terminate_after_contacts_on = []
@@ -113,27 +113,29 @@ class ZqCfg(LeggedRobotCfg):
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.85]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'JOINT_Y1': -0.03,
+            'JOINT_Y1': -0.0,
             'JOINT_Y2': 0.0,
             'JOINT_Y3': 0.21,
             'JOINT_Y4': -0.53,
             'JOINT_Y5': 0.31,
-            'JOINT_Y6': 0.03,
+            #'JOINT_Y6': 0.03,
 
-            'JOINT_Z1': 0.03,
+            'JOINT_Z1': 0.0,
             'JOINT_Z2': 0.0,
             'JOINT_Z3': 0.21,
             'JOINT_Z4': -0.53,
             'JOINT_Z5': 0.31,
-            'JOINT_Z6': -0.03,
+            #'JOINT_Z6': -0.03,
         }
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, 'JOINT_Y6': 50,
-                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, 'JOINT_Z6': 50}
-        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, 'JOINT_Y6': 4,
-                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
+        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 50, #'JOINT_Y6': 50,
+                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 50, #'JOINT_Z6': 50
+                     }
+        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, #'JOINT_Y6': 4,
+                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, #'JOINT_Z6': 4
+                   }
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.1
@@ -204,14 +206,14 @@ class ZqCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 5.6
+            joint_pos = 1.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.2
-            knee_distance = 0.2
+            feet_distance = 0.  #0.2
+            knee_distance = 0.  #0.2
             # contact
             feet_contact_forces = -0.01
             # vel tracking
@@ -246,7 +248,7 @@ class ZqCfg(LeggedRobotCfg):
         clip_actions = 18.
 
 
-class ZqCfgPPO(LeggedRobotCfgPPO):
+class Zq10CfgPPO(LeggedRobotCfgPPO):
     seed = -1
     runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
 
@@ -271,7 +273,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations
-        experiment_name = 'zq'
+        experiment_name = 'zq_10dof'
         run_name = ''
         # load and resume
         resume = False

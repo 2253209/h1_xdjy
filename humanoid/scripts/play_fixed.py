@@ -42,7 +42,7 @@ def play(args):
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
 
-    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_1.pt'
+    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_4-27_delay_6_obs.pt'
     policy = torch.jit.load(load_model)
     
     robot_index = 0 # which robot is used for logging
