@@ -196,8 +196,8 @@ class Zq10FreeEnv(LeggedRobot):
         phase = self._get_phase()
         self.compute_ref_state()
 
-        sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
-        cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
+        # sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
+        # cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.

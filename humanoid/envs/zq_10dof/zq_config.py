@@ -74,7 +74,7 @@ class Zq10Cfg(LeggedRobotCfg):
         knee_name = "4"
 
         terminate_after_contacts_on = []
-        penalize_contacts_on = ['3', '4']
+        penalize_contacts_on = ['5']
         self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
         replace_cylinder_with_capsule = True
@@ -112,20 +112,36 @@ class Zq10Cfg(LeggedRobotCfg):
 
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.85]
+        # default_joint_angles = {  # = target angles [rad] when action = 0.0
+        #     'JOINT_Y1': -0.0,
+        #     'JOINT_Y2': 0.0,
+        #     'JOINT_Y3': 0.21,
+        #     'JOINT_Y4': -0.53,
+        #     'JOINT_Y5': 0.31,
+        #     #'JOINT_Y6': 0.03,
+        #
+        #     'JOINT_Z1': 0.0,
+        #     'JOINT_Z2': 0.0,
+        #     'JOINT_Z3': 0.21,
+        #     'JOINT_Z4': -0.53,
+        #     'JOINT_Z5': 0.31,
+        #     #'JOINT_Z6': -0.03,
+        # }
+
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'JOINT_Y1': -0.0,
             'JOINT_Y2': 0.0,
             'JOINT_Y3': 0.1,
             'JOINT_Y4': -0.2,
             'JOINT_Y5': 0.1,
-            #'JOINT_Y6': 0.03,
+            # 'JOINT_Y6': 0.03,
 
             'JOINT_Z1': 0.0,
             'JOINT_Z2': 0.0,
             'JOINT_Z3': 0.1,
             'JOINT_Z4': -0.2,
             'JOINT_Z5': 0.1,
-            #'JOINT_Z6': -0.03,
+            # 'JOINT_Z6': -0.03,
         }
 
     class control(LeggedRobotCfg.control):
@@ -138,7 +154,7 @@ class Zq10Cfg(LeggedRobotCfg):
                    }
 
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.2
+        action_scale = 0.1
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 2  # 100hz
 
@@ -195,7 +211,7 @@ class Zq10Cfg(LeggedRobotCfg):
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.50    # rad
+        target_joint_pos_scale = 0.5    # rad
         target_feet_height = 0.1       # m
         step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
@@ -206,19 +222,19 @@ class Zq10Cfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 1.6
+            joint_pos = 3.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.  #0.2
-            knee_distance = 0.  #0.2
+            feet_distance = 0.2
+            knee_distance = 0.2
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
-            tracking_ang_vel = 1.1
+            tracking_lin_vel = 2.2
+            tracking_ang_vel = 2.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
             track_vel_hard = 0.5

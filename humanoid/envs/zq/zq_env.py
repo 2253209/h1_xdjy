@@ -60,42 +60,41 @@ class ZqFreeEnv(LeggedRobot):
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
-        # sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        sin_pos = torch.sin(2 * torch.pi * phase)
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
-        stance_mask[:, 1] = (torch.floor(phase) + 1) % 2
+        stance_mask[:, 1] = sin_pos >= 0
         # right foot stance
-        stance_mask[:, 0] = torch.floor(phase) % 2
+        stance_mask[:, 0] = sin_pos < 0
         # Double support phase
-        # stance_mask[torch.abs(sin_pos) < 0.1] = 1
+        stance_mask[torch.abs(sin_pos) < 0.1] = 1
         # print(stance_mask[0])
         return stance_mask
 
     def compute_ref_state(self):
         phase = self._get_phase()
-        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
-        mask_right = (torch.floor(phase) + 1) % 2
-        mask_left = torch.floor(phase) % 2
-        cos_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2  # 得到一条从0开始增加，频率为step_freq，振幅0～1的曲线，接地比较平滑
-        self.cos_pos[:, 0] = cos_pos * mask_right
-        self.cos_pos[:, 1] = cos_pos * mask_left
-
+        sin_pos = torch.sin(2 * torch.pi * phase)
+        sin_pos_l = sin_pos.clone()
+        sin_pos_r = sin_pos.clone()
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
 
         self.ref_dof_pos[:, :] = self.default_dof_pos[0, :]
         # right foot stance phase set to default joint pos
-        self.ref_dof_pos[:, 2] += self.cos_pos[:, 0] * scale_1
-        self.ref_dof_pos[:, 3] += -self.cos_pos[:, 0] * scale_2
-        self.ref_dof_pos[:, 4] += self.cos_pos[:, 0] * scale_1
+        sin_pos_r[sin_pos_r < 0] = 0
+        self.ref_dof_pos[:, 2] += sin_pos_r * scale_1
+        self.ref_dof_pos[:, 3] += -sin_pos_r * scale_2
+        self.ref_dof_pos[:, 4] += sin_pos_r * scale_1
         # left foot stance phase set to default joint pos
-        self.ref_dof_pos[:, 8] += self.cos_pos[:, 1] * scale_1
-        self.ref_dof_pos[:, 9] += -self.cos_pos[:, 1] * scale_2
-        self.ref_dof_pos[:, 10] += self.cos_pos[:, 1] * scale_1
-        # print(self.ref_dof_pos[0])
+        sin_pos_l[sin_pos_l > 0] = 0
+        self.ref_dof_pos[:, 8] += -sin_pos_l * scale_1
+        self.ref_dof_pos[:, 9] += sin_pos_l * scale_2
+        self.ref_dof_pos[:, 10] += -sin_pos_l * scale_1
+        # print('sin_pos_r:', sin_pos_r[0])
+        # print('sin_pos_l:', sin_pos_l[0])
+        # print('ref_dof_pos:', self.ref_dof_pos[0])
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -205,14 +204,16 @@ class ZqFreeEnv(LeggedRobot):
         #     stance_mask[0, 0], stance_mask[0, 1],
         #     contact_mask[0, 0], contact_mask[0, 1]))
 
+        self.command_input = torch.cat(
+            (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
+
         q = (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos
         dq = self.dof_vel * self.obs_scales.dof_vel
         
         diff = self.dof_pos - self.ref_dof_pos
 
         self.privileged_obs_buf = torch.cat((
-            self.cos_pos,  # 2
-            self.commands[:, :3] * self.commands_scale,  # 3
+            self.command_input,  # 2 + 3
             (self.dof_pos - self.default_joint_pd_target) * \
             self.obs_scales.dof_pos,  # 12
             self.dof_vel * self.obs_scales.dof_vel,  # 12
@@ -230,8 +231,7 @@ class ZqFreeEnv(LeggedRobot):
         ), dim=-1)
 
         self.obs_buf = torch.cat((
-            self.cos_pos,  # 2
-            self.commands[:, :3] * self.commands_scale,  # 3
+            self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
             q,    # 12D
@@ -254,8 +254,8 @@ class ZqFreeEnv(LeggedRobot):
 
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
-        # for i in range(self.obs_history.maxlen):
-        #     self.obs_history[i][env_ids] *= 0
+        for i in range(self.obs_history.maxlen):
+            self.obs_history[i][env_ids] *= 0
         # for i in range(self.critic_history.maxlen):
         #     self.critic_history[i][env_ids] *= 0
         for i in range(self.action_history.maxlen):
@@ -367,14 +367,12 @@ class ZqFreeEnv(LeggedRobot):
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        '''
         left_yaw_roll = joint_diff[:, :2]
         right_yaw_roll = joint_diff[:, 6: 8]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
         return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
-        '''
-        return -torch.norm(joint_diff, dim=1)
+        # return -torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):
         """

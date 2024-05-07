@@ -191,7 +191,7 @@ if __name__ == '__main__':
             tau_limit = 200. * np.ones(12, dtype=np.double)
 
     if not args.load_model:
-        args.load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/XBot_ppo/exported/policies/policy_4.pt'
+        args.load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/XBot_ppo/exported/policies/policy_1.pt'
 
     policy = torch.jit.load(args.load_model)
     run_mujoco(policy, Sim2simCfg())
