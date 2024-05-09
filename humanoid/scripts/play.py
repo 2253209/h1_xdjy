@@ -63,7 +63,7 @@ def play(args):
     env_cfg.domain_rand.joint_angle_noise = 0.
     env_cfg.noise.curriculum = False
     env_cfg.noise.noise_level = 0.5
-
+    env_cfg.domain_rand.randomize_init_state = False
 
     train_cfg.seed = -1
     print("train_cfg.runner_class_name:", train_cfg.runner_class_name)
@@ -189,6 +189,6 @@ def play(args):
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RENDER = False
-    FIX_COMMAND = False
+    FIX_COMMAND = True
     args = get_args()
     play(args)

@@ -191,7 +191,8 @@ class ZqFreeEnv(LeggedRobot):
             obs_delayed_1 = self.obs_history[1]
             obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
             # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
-            self.obs_buf[:, 0:self.num_obs-self.num_actions] = obs_delayed[:, 0:self.num_obs-self.num_actions]
+            # self.obs_buf[:, 0:self.num_obs-self.num_actions] = obs_delayed[:, 0:self.num_obs-self.num_actions]
+            self.obs_buf[:, :] = obs_delayed[:, :]
 
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
