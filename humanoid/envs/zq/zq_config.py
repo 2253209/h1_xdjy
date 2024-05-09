@@ -57,8 +57,8 @@ class ZqCfg(LeggedRobotCfg):
 
     class viewer(LeggedRobotCfg.viewer):
         ref_env = 0
-        pos = [-3, -3, 3]  # [m]
-        lookat = [0., 0, 1.]  # [m]
+        pos = [-3, 2, 0.83]  # [m]
+        lookat = [2., 2, 0.83]  # [m]
 
     class safety:
         # safety factors
@@ -82,8 +82,8 @@ class ZqCfg(LeggedRobotCfg):
         terminate_body_height = 0.4
 
     class terrain(LeggedRobotCfg.terrain):
-        # mesh_type = 'plane'
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
+        # mesh_type = 'trimesh'
         curriculum = False
         # rough terrain only:
         measure_heights = False
@@ -104,7 +104,7 @@ class ZqCfg(LeggedRobotCfg):
 
         class noise_scales:
             dof_pos = 0.05
-            dof_vel = 0.5
+            dof_vel = 0.2
             ang_vel = 0.1
             lin_vel = 0.05
             quat = 0.03
@@ -136,7 +136,7 @@ class ZqCfg(LeggedRobotCfg):
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
 
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.1
+        action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 2  # 100hz
 
@@ -169,6 +169,7 @@ class ZqCfg(LeggedRobotCfg):
         max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         dynamic_randomization = 0.02
+        randomize_init_state = False
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -215,7 +216,7 @@ class ZqCfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
+            tracking_lin_vel = 3.2
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2

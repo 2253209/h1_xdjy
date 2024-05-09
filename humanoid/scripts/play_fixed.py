@@ -42,7 +42,7 @@ def play(args):
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
 
-    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_4-27_delay_6_obs.pt'
+    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_5-9_nodelay.pt'
     policy = torch.jit.load(load_model)
     
     robot_index = 0 # which robot is used for logging
@@ -58,9 +58,14 @@ def play(args):
     t0 = 0
 
     for i in range(10*int(env.max_episode_length)):
+        if i < 100:
+            actions = torch.zeros((env.num_envs, env.num_actions))
+            actions[:, :] = env.default_dof_pos[:]
+        else:
+            actions = policy(obs.detach())  # * 0.
         # obs[:, -12:] = 0.
         # print('obs_action:', obs[0, -12:])
-        actions = policy(obs.detach())
+        # actions = policy(obs.detach())
         # print('action:', actions[0])
         # actions[:, :] = env.default_dof_pos[0, :]
 
@@ -74,6 +79,7 @@ def play(args):
         env.commands[:, 0] = 0.0
         env.commands[:, 1] = 0.0
         env.commands[:, 2] = 0.0
+        env.commands[:, 3] = 0.0
 
         obs, _, rews, dones, infos = env.step(actions.detach())
         obs = obs.to('cpu')

@@ -122,7 +122,12 @@ def play(args):
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
 
     for i in tqdm(range(max_steps)):
-        actions = policy(obs.detach())  # * 0.
+
+        if i < 100:
+            actions = torch.zeros((env.num_envs, env.num_actions))
+            actions[:, :] = env.default_dof_pos[:]
+        else:
+            actions = policy(obs.detach())  # * 0.
         
         if FIX_COMMAND:
             env.commands[:, 0] = 0.    # 1.0
@@ -183,7 +188,7 @@ def play(args):
 
 if __name__ == '__main__':
     EXPORT_POLICY = True
-    RENDER = True
-    FIX_COMMAND = True
+    RENDER = False
+    FIX_COMMAND = False
     args = get_args()
     play(args)

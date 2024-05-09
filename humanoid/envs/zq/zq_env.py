@@ -20,6 +20,8 @@ class ZqFreeEnv(LeggedRobot):
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
+        self.ref_count = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)  # 步态生成器--计数器
+
         # 观察值的上行delay
         self.obs_history = deque(maxlen=self.cfg.env.queue_len_obs)
         for _ in range(self.cfg.env.queue_len_obs):
@@ -53,48 +55,50 @@ class ZqFreeEnv(LeggedRobot):
         self.gym.set_actor_root_state_tensor(
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
-    def  _get_phase(self):
-        phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+    def _get_phase(self):
+        # phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+        phase = self.ref_count * self.dt * self.cfg.rewards.step_freq * 2.
         return phase
 
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
+        # sin_pos = torch.sin(2 * torch.pi * phase)
+        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
-        stance_mask[:, 1] = sin_pos >= 0
+        stance_mask[:, 1] = (torch.floor(phase) + 1) % 2
         # right foot stance
-        stance_mask[:, 0] = sin_pos < 0
+        stance_mask[:, 0] = torch.floor(phase) % 2
         # Double support phase
-        stance_mask[torch.abs(sin_pos) < 0.1] = 1
+        # stance_mask[torch.abs(sin_pos) < 0.1] = 1
         # print(stance_mask[0])
         return stance_mask
 
     def compute_ref_state(self):
         phase = self._get_phase()
-        sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos_l = sin_pos.clone()
-        sin_pos_r = sin_pos.clone()
+        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        mask_right = (torch.floor(phase) + 1) % 2
+        mask_left = torch.floor(phase) % 2
+        cos_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2  # 得到一条从0开始增加，频率为step_freq，振幅0～1的曲线，接地比较平滑
+        self.cos_pos[:, 0] = cos_pos * mask_right
+        self.cos_pos[:, 1] = cos_pos * mask_left
+
         self.ref_dof_pos = torch.zeros_like(self.dof_pos)
         scale_1 = self.cfg.rewards.target_joint_pos_scale
         scale_2 = 2 * scale_1
 
         self.ref_dof_pos[:, :] = self.default_dof_pos[0, :]
         # right foot stance phase set to default joint pos
-        sin_pos_r[sin_pos_r < 0] = 0
-        self.ref_dof_pos[:, 2] += sin_pos_r * scale_1
-        self.ref_dof_pos[:, 3] += -sin_pos_r * scale_2
-        self.ref_dof_pos[:, 4] += sin_pos_r * scale_1
+        self.ref_dof_pos[:, 2] += self.cos_pos[:, 0] * scale_1
+        self.ref_dof_pos[:, 3] += -self.cos_pos[:, 0] * scale_2
+        self.ref_dof_pos[:, 4] += self.cos_pos[:, 0] * scale_1
         # left foot stance phase set to default joint pos
-        sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, 8] += -sin_pos_l * scale_1
-        self.ref_dof_pos[:, 9] += sin_pos_l * scale_2
-        self.ref_dof_pos[:, 10] += -sin_pos_l * scale_1
-        # print('sin_pos_r:', sin_pos_r[0])
-        # print('sin_pos_l:', sin_pos_l[0])
-        # print('ref_dof_pos:', self.ref_dof_pos[0])
+        self.ref_dof_pos[:, 8] += self.cos_pos[:, 1] * scale_1
+        self.ref_dof_pos[:, 9] += -self.cos_pos[:, 1] * scale_2
+        self.ref_dof_pos[:, 10] += self.cos_pos[:, 1] * scale_1
+        # print(self.ref_dof_pos[0])
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -143,6 +147,7 @@ class ZqFreeEnv(LeggedRobot):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
             # actions = self.ref_action
+        self.ref_count += 1
 
         # dynamic randomization
         # delay = torch.rand((self.num_envs, 1), device=self.device)
@@ -204,16 +209,14 @@ class ZqFreeEnv(LeggedRobot):
         #     stance_mask[0, 0], stance_mask[0, 1],
         #     contact_mask[0, 0], contact_mask[0, 1]))
 
-        self.command_input = torch.cat(
-            (sin_pos, cos_pos, self.commands[:, :3] * self.commands_scale), dim=1)
-
         q = (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos
         dq = self.dof_vel * self.obs_scales.dof_vel
         
         diff = self.dof_pos - self.ref_dof_pos
 
         self.privileged_obs_buf = torch.cat((
-            self.command_input,  # 2 + 3
+            self.cos_pos,  # 2
+            self.commands[:, :3] * self.commands_scale,  # 3
             (self.dof_pos - self.default_joint_pd_target) * \
             self.obs_scales.dof_pos,  # 12
             self.dof_vel * self.obs_scales.dof_vel,  # 12
@@ -231,7 +234,8 @@ class ZqFreeEnv(LeggedRobot):
         ), dim=-1)
 
         self.obs_buf = torch.cat((
-            self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
+            self.cos_pos,  # 2
+            self.commands[:, :3] * self.commands_scale,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
             q,    # 12D
@@ -254,12 +258,66 @@ class ZqFreeEnv(LeggedRobot):
 
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
-        for i in range(self.obs_history.maxlen):
-            self.obs_history[i][env_ids] *= 0
+        # for i in range(self.obs_history.maxlen):
+        #     self.obs_history[i][env_ids] *= 0
         # for i in range(self.critic_history.maxlen):
         #     self.critic_history[i][env_ids] *= 0
         for i in range(self.action_history.maxlen):
             self.action_history[i][env_ids] = self.default_dof_pos
+        self.ref_count[env_ids] = 0
+
+    def _reset_dofs(self, env_ids):
+        """ Resets DOF position and velocities of selected environmments
+        Positions are randomly selected within 0.5:1.5 x default positions.
+        Velocities are set to zero.
+
+        Args:
+            env_ids (List[int]): Environemnt ids
+        """
+        if self.cfg.domain_rand.randomize_init_state:
+            self.dof_pos[env_ids] = self.default_dof_pos + torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
+        else:
+            self.dof_pos[env_ids] = self.default_dof_pos
+        self.dof_vel[env_ids] = 0.
+
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_dof_state_tensor_indexed(self.sim,
+                                              gymtorch.unwrap_tensor(self.dof_state),
+                                              gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+
+    def _reset_root_states(self, env_ids):
+        """ Resets ROOT states position and velocities of selected environmments
+            Sets base position based on the curriculum
+            Selects randomized base velocities within -0.5:0.5 [m/s, rad/s]
+        Args:
+            env_ids (List[int]): Environemnt ids
+        """
+        # base position
+        if self.custom_origins:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+            self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
+        else:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+
+            if self.cfg.domain_rand.randomize_init_state:
+                rpy = torch_rand_float(-0.1, 0.1, (len(env_ids), 3), device=self.device)
+                for index, env_id in enumerate(env_ids):
+                    self.root_states[env_id, 3:7] = quat_from_euler_xyz(rpy[index, 0], rpy[index, 1], rpy[index, 2])
+                # self.root_states[env_ids, 3:7] += torch_rand_float(-0.5, 0.5, (len(env_ids), 4), device=self.device) # xy position within 1m of the center
+
+        # base velocities
+        if self.cfg.domain_rand.randomize_init_state:
+            self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
+
+        if self.cfg.asset.fix_base_link:
+            self.root_states[env_ids, 7:13] = 0
+            self.root_states[env_ids, 2] += 1.0
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                     gymtorch.unwrap_tensor(self.root_states),
+                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
     def check_termination(self):
         super().check_termination()
