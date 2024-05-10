@@ -20,6 +20,8 @@ class Zq10FreeEnv(LeggedRobot):
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
+        self.ref_count = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)  # 步态生成器--计数器
+
         # 观察值的上行delay
         self.obs_history = deque(maxlen=self.cfg.env.queue_len_obs)
         for _ in range(self.cfg.env.queue_len_obs):
@@ -53,15 +55,16 @@ class Zq10FreeEnv(LeggedRobot):
         self.gym.set_actor_root_state_tensor(
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
-    def  _get_phase(self):
-        phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+    def _get_phase(self):
+        # phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+        phase = self.ref_count * self.dt * self.cfg.rewards.step_freq * 2.
         return phase
 
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
         # sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
@@ -144,6 +147,7 @@ class Zq10FreeEnv(LeggedRobot):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
             # actions = self.ref_action
+        self.ref_count += 1
 
         # dynamic randomization
         # delay = torch.rand((self.num_envs, 1), device=self.device)

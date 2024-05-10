@@ -74,7 +74,7 @@ class Zq10Cfg(LeggedRobotCfg):
         knee_name = "4"
 
         terminate_after_contacts_on = []
-        penalize_contacts_on = ['5']
+        penalize_contacts_on = ['3', '4']
         self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
         replace_cylinder_with_capsule = True
@@ -104,7 +104,7 @@ class Zq10Cfg(LeggedRobotCfg):
 
         class noise_scales:
             dof_pos = 0.05
-            dof_vel = 0.5
+            dof_vel = 0.2
             ang_vel = 0.1
             lin_vel = 0.05
             quat = 0.03
@@ -154,7 +154,7 @@ class Zq10Cfg(LeggedRobotCfg):
                    }
 
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.1
+        action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 2  # 100hz
 
@@ -181,12 +181,13 @@ class Zq10Cfg(LeggedRobotCfg):
         randomize_friction = True
         friction_range = [0.8, 1.2]
         randomize_base_mass = True
-        added_mass_range = [-1., 1.]
+        added_mass_range = [-2., 2.]
         push_robots = True
-        push_interval_s = 5
-        max_push_vel_xy = 0.4
+        push_interval_s = 4
+        max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         dynamic_randomization = 0.02
+        randomize_init_state = True
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -211,9 +212,9 @@ class Zq10Cfg(LeggedRobotCfg):
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.5    # rad
+        target_joint_pos_scale = 0.3    # rad
         target_feet_height = 0.1       # m
-        step_freq = 1.5                # Hz, sec=0.666
+        step_freq = 1.0                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -233,20 +234,20 @@ class Zq10Cfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 2.2
-            tracking_ang_vel = 2.1
+            tracking_lin_vel = 3.2
+            tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
             track_vel_hard = 0.5
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = 1.2
+            base_height = 0.2
             base_acc = 0.2
-            lin_vel_z = -2.0
+            lin_vel_z = -1.0
             # energy
-            # action_smoothness = -0.002
-            action_rate = -0.01
+            action_smoothness = -0.002
+            action_rate = -0.0   #0.01
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7
@@ -255,7 +256,7 @@ class Zq10Cfg(LeggedRobotCfg):
     class normalization:
         class obs_scales:
             lin_vel = 1.
-            ang_vel = 1
+            ang_vel = 0.25
             dof_pos = 1.
             dof_vel = 0.05
             quat = 1.

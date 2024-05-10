@@ -206,14 +206,14 @@ Stephen Brawner (brawner@gmail.com)
 <!--          filename="../meshes/RightLeg_Link_03.STL" />-->
 <!--      </geometry>-->
 <!--    </collision>-->
-    <!-- <collision>
+    <collision>
       <origin
         xyz="0 0 -0.12"
         rpy="0 0 0" />
       <geometry>
         <box size="0.08 0.08 0.25" />
       </geometry>
-    </collision> -->
+    </collision>
   </link>
 
   <joint
@@ -274,14 +274,14 @@ Stephen Brawner (brawner@gmail.com)
 <!--          filename="../meshes/RightLeg_Link_04.STL" />-->
 <!--      </geometry>-->
 <!--    </collision>-->
-    <!-- <collision>
+    <collision>
       <origin
         xyz="0 0 -0.2"
         rpy="0 0 0" />
       <geometry>
-        <box size="0.05 0.05 0.35" />
+        <box size="0.05 0.05 0.30" />
       </geometry>
-    </collision> -->
+    </collision>
   </link>
 
   <joint
@@ -530,14 +530,14 @@ Stephen Brawner (brawner@gmail.com)
 <!--          filename="../meshes/LeftLeg_Link_03.STL" />-->
 <!--      </geometry>-->
 <!--    </collision>-->
-    <!-- <collision>
+    <collision>
       <origin
         xyz="0 0 -0.12"
         rpy="0 0 0" />
       <geometry>
         <box size="0.08 0.08 0.25" />
       </geometry>
-    </collision> -->
+    </collision>
   </link>
 
   <joint
@@ -598,14 +598,14 @@ Stephen Brawner (brawner@gmail.com)
 <!--          filename="../meshes/LeftLeg_Link_04.STL" />-->
 <!--      </geometry>-->
 <!--    </collision>-->
-    <!-- <collision>
+    <collision>
       <origin
         xyz="0 0 -0.2"
         rpy="0 0 0" />
       <geometry>
-        <box size="0.05 0.05 0.35" />
+        <box size="0.05 0.05 0.30" />
       </geometry>
-    </collision> -->
+    </collision>
   </link>
 
   <joint

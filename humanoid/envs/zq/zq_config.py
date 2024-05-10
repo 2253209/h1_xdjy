@@ -22,9 +22,9 @@ class ZqCfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        is_delay_obs = False  # 控制上行delay的开关
+        is_delay_obs = True  # 控制上行delay的开关
         is_delay_act = False  # 控制下行delay的开关
-        queue_len_obs = 3   # 不可小于2，可以通过上面的is_delay_obs控制开关
+        queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
     class viewer(LeggedRobotCfg.viewer):

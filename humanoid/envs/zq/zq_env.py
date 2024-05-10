@@ -64,7 +64,7 @@ class ZqFreeEnv(LeggedRobot):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
         # sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
@@ -201,8 +201,8 @@ class ZqFreeEnv(LeggedRobot):
         phase = self._get_phase()
         self.compute_ref_state()
 
-        sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
-        cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
+        # sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
+        # cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.
