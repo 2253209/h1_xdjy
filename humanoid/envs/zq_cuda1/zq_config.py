@@ -1,31 +1,3 @@
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-# Copyright (c) 2024 Beijing RobotEra TECHNOLOGY CO.,LTD. All rights reserved.
 
 import numpy as np
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
@@ -50,15 +22,15 @@ class Zq1Cfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        is_delay_obs = True  # 控制上行delay的开关
+        is_delay_obs = False  # 控制上行delay的开关
         is_delay_act = False  # 控制下行delay的开关
         queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
 
     class viewer(LeggedRobotCfg.viewer):
         ref_env = 0
-        pos = [-3, -3, 3]  # [m]
-        lookat = [0., 0, 1.]  # [m]
+        pos = [-3, 2, 0.83]  # [m]
+        lookat = [2., 2, 0.83]  # [m]
 
     class safety:
         # safety factors
@@ -104,7 +76,7 @@ class Zq1Cfg(LeggedRobotCfg):
 
         class noise_scales:
             dof_pos = 0.05
-            dof_vel = 0.5
+            dof_vel = 0.2
             ang_vel = 0.1
             lin_vel = 0.05
             quat = 0.03
@@ -113,19 +85,19 @@ class Zq1Cfg(LeggedRobotCfg):
     class init_state(LeggedRobotCfg.init_state):
         pos = [0.0, 0.0, 0.85]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'JOINT_Y1': -0.03,
+            'JOINT_Y1': -0.0,
             'JOINT_Y2': 0.0,
             'JOINT_Y3': 0.21,
             'JOINT_Y4': -0.53,
             'JOINT_Y5': 0.31,
-            'JOINT_Y6': 0.03,
+            'JOINT_Y6': 0.0,
 
-            'JOINT_Z1': 0.03,
+            'JOINT_Z1': 0.0,
             'JOINT_Z2': 0.0,
             'JOINT_Z3': 0.21,
             'JOINT_Z4': -0.53,
             'JOINT_Z5': 0.31,
-            'JOINT_Z6': -0.03,
+            'JOINT_Z6': -0.0,
         }
 
     class control(LeggedRobotCfg.control):
@@ -136,7 +108,7 @@ class Zq1Cfg(LeggedRobotCfg):
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, 'JOINT_Z6': 4}
 
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.1
+        action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 2  # 100hz
 
@@ -163,12 +135,13 @@ class Zq1Cfg(LeggedRobotCfg):
         randomize_friction = True
         friction_range = [0.8, 1.2]
         randomize_base_mass = True
-        added_mass_range = [-1., 1.]
+        added_mass_range = [-2., 2.]
         push_robots = True
-        push_interval_s = 5
-        max_push_vel_xy = 0.4
+        push_interval_s = 4
+        max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         dynamic_randomization = 0.02
+        randomize_init_state = True
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -193,9 +166,9 @@ class Zq1Cfg(LeggedRobotCfg):
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.50    # rad
+        target_joint_pos_scale = 0.3    # rad
         target_feet_height = 0.1       # m
-        step_freq = 1.5                # Hz, sec=0.666
+        step_freq = 1.0                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -204,7 +177,7 @@ class Zq1Cfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 5.6
+            joint_pos = 3.6
             feet_clearance = 1.
             feet_contact_number = 1.2
             # gait
@@ -215,7 +188,7 @@ class Zq1Cfg(LeggedRobotCfg):
             # contact
             feet_contact_forces = -0.01
             # vel tracking
-            tracking_lin_vel = 1.2
+            tracking_lin_vel = 3.2
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
             low_speed = 0.2
@@ -223,12 +196,12 @@ class Zq1Cfg(LeggedRobotCfg):
             # base pos
             default_joint_pos = 0.5
             orientation = 1.
-            base_height = 1.2
+            base_height = 0.2
             base_acc = 0.2
-            lin_vel_z = -2.0
+            lin_vel_z = -1.0
             # energy
-            # action_smoothness = -0.002
-            action_rate = -0.01
+            action_smoothness = -0.002
+            action_rate = -0.0   #0.01
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7
@@ -237,7 +210,7 @@ class Zq1Cfg(LeggedRobotCfg):
     class normalization:
         class obs_scales:
             lin_vel = 1.
-            ang_vel = 1
+            ang_vel = 0.25
             dof_pos = 1.
             dof_vel = 0.05
             quat = 1.

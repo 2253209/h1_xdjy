@@ -174,7 +174,8 @@ class Zq10FreeEnv(LeggedRobot):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
-            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
+            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.cfg.sim.dt
+            self.last_dof_vel[:] = self.dof_vel[:]
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -258,11 +259,60 @@ class Zq10FreeEnv(LeggedRobot):
             self.privileged_obs_buf = torch.nan_to_num(self.privileged_obs_buf, nan=0.0001)
 
     def reset_idx(self, env_ids):
-        super().reset_idx(env_ids)
-        # for i in range(self.obs_history.maxlen):
-        #     self.obs_history[i][env_ids] *= 0
-        # for i in range(self.critic_history.maxlen):
-        #     self.critic_history[i][env_ids] *= 0
+        """ Reset some environments.
+            Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
+            [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids) and
+            Logs episode info
+            Resets some buffers
+
+        Args:
+            env_ids (list[int]): List of environment ids which must be reset
+        """
+        if len(env_ids) == 0:
+            return
+        # update curriculum
+        if self.cfg.terrain.curriculum:
+            self._update_terrain_curriculum(env_ids)
+        # avoid updating command curriculum at each step since the maximum command is common to all envs
+        if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length == 0):
+            self.update_command_curriculum(env_ids)
+
+        # reset robot states
+        self._reset_dofs(env_ids)
+
+        self._reset_root_states(env_ids)
+
+        self._resample_commands(env_ids)
+
+        # reset buffers
+        self.last_last_actions[env_ids] = 0.
+        self.actions[env_ids] = 0.
+        self.last_actions[env_ids] = 0.
+        self.last_rigid_state[env_ids] = 0.
+        self.last_dof_vel[env_ids] = 0.
+        self.feet_air_time[env_ids] = 0.
+        self.episode_length_buf[env_ids] = 0
+        self.reset_buf[env_ids] = 1
+        # fill extras
+        self.extras["episode"] = {}
+        for key in self.episode_sums.keys():
+            self.extras["episode"]['rew_' + key] = torch.mean(
+                self.episode_sums[key][env_ids]) / self.max_episode_length_s
+            self.episode_sums[key][env_ids] = 0.
+        # log additional curriculum info
+        if self.cfg.terrain.mesh_type == "trimesh":
+            self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+        if self.cfg.commands.curriculum:
+            self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
+        # send timeout info to the algorithm
+        if self.cfg.env.send_timeouts:
+            self.extras["time_outs"] = self.time_out_buf
+
+        # fix reset gravity bug
+        self.base_quat[env_ids] = self.root_states[env_ids, 3:7]
+        self.base_euler_xyz = get_euler_xyz_tensor(self.base_quat)
+        self.projected_gravity[env_ids] = quat_rotate_inverse(self.base_quat[env_ids], self.gravity_vec[env_ids])
+
         for i in range(self.action_history.maxlen):
             self.action_history[i][env_ids] = self.default_dof_pos
         self.ref_count[env_ids] = 0

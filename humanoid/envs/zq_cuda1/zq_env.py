@@ -20,6 +20,8 @@ class Zq1FreeEnv(LeggedRobot):
         self.feet_height = torch.zeros((self.num_envs, 2), device=self.device)
         self.reset_buf2 = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         self.cos_pos = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float)  # 每个env当前步态的cos相位。如果步频变化，则可以从这里开始。
+        self.ref_count = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)  # 步态生成器--计数器
+
         # 观察值的上行delay
         self.obs_history = deque(maxlen=self.cfg.env.queue_len_obs)
         for _ in range(self.cfg.env.queue_len_obs):
@@ -53,15 +55,16 @@ class Zq1FreeEnv(LeggedRobot):
         self.gym.set_actor_root_state_tensor(
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
-    def  _get_phase(self):
-        phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+    def _get_phase(self):
+        # phase = self.episode_length_buf * self.dt * self.cfg.rewards.step_freq * 2.
+        phase = self.ref_count * self.dt * self.cfg.rewards.step_freq * 2.
         return phase
 
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
         # sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
+        # sin_pos = (1 - torch.cos(2 * torch.pi * phase)) / 2.
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
@@ -144,6 +147,7 @@ class Zq1FreeEnv(LeggedRobot):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
             # actions = self.ref_action
+        self.ref_count += 1
 
         # dynamic randomization
         # delay = torch.rand((self.num_envs, 1), device=self.device)
@@ -170,7 +174,8 @@ class Zq1FreeEnv(LeggedRobot):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
-            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
+            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.cfg.sim.dt
+            self.last_dof_vel[:] = self.dof_vel[:]
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -187,7 +192,8 @@ class Zq1FreeEnv(LeggedRobot):
             obs_delayed_1 = self.obs_history[1]
             obs_delayed = obs_delayed_0 * (20-index_obs)/20 + obs_delayed_1 * index_obs/20
             # obs：由当前sin，当前cmd（不延迟），omega（不延迟）、euler（不延迟）、pos、vel，action（不延迟）组成。
-            self.obs_buf[:, 0:self.num_obs-self.num_actions] = obs_delayed[:, 0:self.num_obs-self.num_actions]
+            # self.obs_buf[:, 0:self.num_obs-self.num_actions] = obs_delayed[:, 0:self.num_obs-self.num_actions]
+            self.obs_buf[:, :] = obs_delayed[:, :]
 
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
@@ -196,8 +202,8 @@ class Zq1FreeEnv(LeggedRobot):
         phase = self._get_phase()
         self.compute_ref_state()
 
-        sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
-        cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
+        # sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
+        # cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
 
         stance_mask = self._get_gait_phase()
         contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.
@@ -216,7 +222,7 @@ class Zq1FreeEnv(LeggedRobot):
             (self.dof_pos - self.default_joint_pd_target) * \
             self.obs_scales.dof_pos,  # 12
             self.dof_vel * self.obs_scales.dof_vel,  # 12
-            self.actions,  # 12
+            self.actions * self.cfg.control.action_scale,  # 12
             diff,  # 12
             self.base_lin_vel * self.obs_scales.lin_vel,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
@@ -236,7 +242,7 @@ class Zq1FreeEnv(LeggedRobot):
             self.base_euler_xyz * self.obs_scales.quat,  # 3
             q,    # 12D
             dq,  # 12D
-            self.actions,   # 12D
+            self.actions * self.cfg.control.action_scale,   # 12D
         ), dim=-1)
 
         if self.cfg.terrain.measure_heights:
@@ -253,13 +259,116 @@ class Zq1FreeEnv(LeggedRobot):
             self.privileged_obs_buf = torch.nan_to_num(self.privileged_obs_buf, nan=0.0001)
 
     def reset_idx(self, env_ids):
-        super().reset_idx(env_ids)
-        # for i in range(self.obs_history.maxlen):
-        #     self.obs_history[i][env_ids] *= 0
-        # for i in range(self.critic_history.maxlen):
-        #     self.critic_history[i][env_ids] *= 0
+        """ Reset some environments.
+            Calls self._reset_dofs(env_ids), self._reset_root_states(env_ids), and self._resample_commands(env_ids)
+            [Optional] calls self._update_terrain_curriculum(env_ids), self.update_command_curriculum(env_ids) and
+            Logs episode info
+            Resets some buffers
+
+        Args:
+            env_ids (list[int]): List of environment ids which must be reset
+        """
+        if len(env_ids) == 0:
+            return
+        # update curriculum
+        if self.cfg.terrain.curriculum:
+            self._update_terrain_curriculum(env_ids)
+        # avoid updating command curriculum at each step since the maximum command is common to all envs
+        if self.cfg.commands.curriculum and (self.common_step_counter % self.max_episode_length == 0):
+            self.update_command_curriculum(env_ids)
+
+        # reset robot states
+        self._reset_dofs(env_ids)
+
+        self._reset_root_states(env_ids)
+
+        self._resample_commands(env_ids)
+
+        # reset buffers
+        self.last_last_actions[env_ids] = 0.
+        self.actions[env_ids] = 0.
+        self.last_actions[env_ids] = 0.
+        self.last_rigid_state[env_ids] = 0.
+        self.last_dof_vel[env_ids] = 0.
+        self.feet_air_time[env_ids] = 0.
+        self.episode_length_buf[env_ids] = 0
+        self.reset_buf[env_ids] = 1
+        # fill extras
+        self.extras["episode"] = {}
+        for key in self.episode_sums.keys():
+            self.extras["episode"]['rew_' + key] = torch.mean(
+                self.episode_sums[key][env_ids]) / self.max_episode_length_s
+            self.episode_sums[key][env_ids] = 0.
+        # log additional curriculum info
+        if self.cfg.terrain.mesh_type == "trimesh":
+            self.extras["episode"]["terrain_level"] = torch.mean(self.terrain_levels.float())
+        if self.cfg.commands.curriculum:
+            self.extras["episode"]["max_command_x"] = self.command_ranges["lin_vel_x"][1]
+        # send timeout info to the algorithm
+        if self.cfg.env.send_timeouts:
+            self.extras["time_outs"] = self.time_out_buf
+
+        # fix reset gravity bug
+        self.base_quat[env_ids] = self.root_states[env_ids, 3:7]
+        self.base_euler_xyz = get_euler_xyz_tensor(self.base_quat)
+        self.projected_gravity[env_ids] = quat_rotate_inverse(self.base_quat[env_ids], self.gravity_vec[env_ids])
+
         for i in range(self.action_history.maxlen):
             self.action_history[i][env_ids] = self.default_dof_pos
+        self.ref_count[env_ids] = 0
+
+    def _reset_dofs(self, env_ids):
+        """ Resets DOF position and velocities of selected environmments
+        Positions are randomly selected within 0.5:1.5 x default positions.
+        Velocities are set to zero.
+
+        Args:
+            env_ids (List[int]): Environemnt ids
+        """
+        if self.cfg.domain_rand.randomize_init_state:
+            self.dof_pos[env_ids] = self.default_dof_pos + torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
+        else:
+            self.dof_pos[env_ids] = self.default_dof_pos
+        self.dof_vel[env_ids] = 0.
+
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_dof_state_tensor_indexed(self.sim,
+                                              gymtorch.unwrap_tensor(self.dof_state),
+                                              gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+
+    def _reset_root_states(self, env_ids):
+        """ Resets ROOT states position and velocities of selected environmments
+            Sets base position based on the curriculum
+            Selects randomized base velocities within -0.5:0.5 [m/s, rad/s]
+        Args:
+            env_ids (List[int]): Environemnt ids
+        """
+        # base position
+        if self.custom_origins:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+            self.root_states[env_ids, :2] += torch_rand_float(-1., 1., (len(env_ids), 2), device=self.device) # xy position within 1m of the center
+        else:
+            self.root_states[env_ids] = self.base_init_state
+            self.root_states[env_ids, :3] += self.env_origins[env_ids]
+
+            if self.cfg.domain_rand.randomize_init_state:
+                rpy = torch_rand_float(-0.1, 0.1, (len(env_ids), 3), device=self.device)
+                for index, env_id in enumerate(env_ids):
+                    self.root_states[env_id, 3:7] = quat_from_euler_xyz(rpy[index, 0], rpy[index, 1], rpy[index, 2])
+                # self.root_states[env_ids, 3:7] += torch_rand_float(-0.5, 0.5, (len(env_ids), 4), device=self.device) # xy position within 1m of the center
+
+        # base velocities
+        if self.cfg.domain_rand.randomize_init_state:
+            self.root_states[env_ids, 7:13] = torch_rand_float(-0.05, 0.05, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
+
+        if self.cfg.asset.fix_base_link:
+            self.root_states[env_ids, 7:13] = 0
+            self.root_states[env_ids, 2] += 1.0
+        env_ids_int32 = env_ids.to(dtype=torch.int32)
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                     gymtorch.unwrap_tensor(self.root_states),
+                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
     def check_termination(self):
         super().check_termination()
@@ -283,7 +392,7 @@ class Zq1FreeEnv(LeggedRobot):
 
     def _reward_feet_distance(self):
         """
-        Calculates the reward based on the distance between the feet. Penilize feet get close to each other or too far away.
+        Calculates the reward based on the distance between the feet. Penalizes feet get close to each other or too far away.
         """
         foot_pos = self.rigid_state[:, self.feet_indices, :2]
         foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
@@ -367,14 +476,12 @@ class Zq1FreeEnv(LeggedRobot):
         on penalizing deviation in yaw and roll directions. Excludes yaw and roll from the main penalty.
         """
         joint_diff = self.dof_pos - self.default_joint_pd_target
-        '''
         left_yaw_roll = joint_diff[:, :2]
         right_yaw_roll = joint_diff[:, 6: 8]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
         return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)
-        '''
-        return -torch.norm(joint_diff, dim=1)
+        # return -torch.norm(joint_diff, dim=1)
 
     def _reward_base_height(self):
         """
