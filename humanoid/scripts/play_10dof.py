@@ -58,12 +58,12 @@ def play(args):
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False     
     env_cfg.terrain.max_init_terrain_level = 5
-    env_cfg.noise.add_noise = True
+    env_cfg.noise.add_noise = False
     env_cfg.domain_rand.push_robots = False 
     env_cfg.domain_rand.joint_angle_noise = 0.
     env_cfg.noise.curriculum = False
     env_cfg.noise.noise_level = 0.5
-
+    env_cfg.domain_rand.randomize_init_state = False
 
     train_cfg.seed = -1
     print("train_cfg.runner_class_name:", train_cfg.runner_class_name)
@@ -122,7 +122,12 @@ def play(args):
         video = cv2.VideoWriter(dir, fourcc, 50.0, (1920, 1080))
 
     for i in tqdm(range(max_steps)):
-        actions = policy(obs.detach())  # * 0.
+
+        if i < 100:
+            actions = torch.zeros((env.num_envs, env.num_actions))
+            actions[:, :] = env.default_dof_pos[:]
+        else:
+            actions = policy(obs.detach())  # * 0.
         
         if FIX_COMMAND:
             env.commands[:, 0] = 0.    # 1.0

@@ -221,7 +221,7 @@ class ZqFreeEnv(LeggedRobot):
             (self.dof_pos - self.default_joint_pd_target) * \
             self.obs_scales.dof_pos,  # 12
             self.dof_vel * self.obs_scales.dof_vel,  # 12
-            self.actions,  # 12
+            self.actions * self.cfg.control.action_scale,  # 12
             diff,  # 12
             self.base_lin_vel * self.obs_scales.lin_vel,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
@@ -241,7 +241,7 @@ class ZqFreeEnv(LeggedRobot):
             self.base_euler_xyz * self.obs_scales.quat,  # 3
             q,    # 12D
             dq,  # 12D
-            self.actions,   # 12D
+            self.actions * self.cfg.control.action_scale,   # 12D
         ), dim=-1)
 
         if self.cfg.terrain.measure_heights:
@@ -342,7 +342,7 @@ class ZqFreeEnv(LeggedRobot):
 
     def _reward_feet_distance(self):
         """
-        Calculates the reward based on the distance between the feet. Penilize feet get close to each other or too far away.
+        Calculates the reward based on the distance between the feet. Penalizes feet get close to each other or too far away.
         """
         foot_pos = self.rigid_state[:, self.feet_indices, :2]
         foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)

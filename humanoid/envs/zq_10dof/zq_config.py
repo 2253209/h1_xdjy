@@ -50,7 +50,7 @@ class Zq10Cfg(LeggedRobotCfg):
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
         env_spacing = 1.
-        is_delay_obs = True  # 控制上行delay的开关
+        is_delay_obs = False  # 控制上行delay的开关
         is_delay_act = False  # 控制下行delay的开关
         queue_len_obs = 6   # 不可小于2，可以通过上面的is_delay_obs控制开关
         queue_len_act = 3   # 不可小于2，可以通过上面的is_delay_act控制开关
@@ -82,8 +82,8 @@ class Zq10Cfg(LeggedRobotCfg):
         terminate_body_height = 0.4
 
     class terrain(LeggedRobotCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
         curriculum = False
         # rough terrain only:
         measure_heights = False
@@ -212,9 +212,9 @@ class Zq10Cfg(LeggedRobotCfg):
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.3    # rad
+        target_joint_pos_scale = 0.4    # rad
         target_feet_height = 0.1       # m
-        step_freq = 1.0                # Hz, sec=0.666
+        step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -229,8 +229,8 @@ class Zq10Cfg(LeggedRobotCfg):
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.2
-            knee_distance = 0.2
+            feet_distance = 0.  # 0.2
+            knee_distance = 0.  # 0.2
             # contact
             feet_contact_forces = -0.01
             # vel tracking
