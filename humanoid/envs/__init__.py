@@ -31,7 +31,7 @@
 
 
 from humanoid import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
-from .base.legged_robot import LeggedRobot
+from .base.legged_robot import LeggedRobot,get_euler_xyz_tensor
 from humanoid.utils.task_registry import task_registry
 
 from .custom.humanoid_config import XBotLCfg, XBotLCfgPPO

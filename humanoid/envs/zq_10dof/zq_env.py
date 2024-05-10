@@ -5,7 +5,7 @@ from isaacgym.torch_utils import *
 from isaacgym import gymtorch, gymapi
 
 import torch
-from humanoid.envs import LeggedRobot
+from humanoid.envs import LeggedRobot, get_euler_xyz_tensor
 from humanoid.utils.terrain import HumanoidTerrain
 from collections import deque
 from numpy import random
