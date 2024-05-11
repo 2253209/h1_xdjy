@@ -123,13 +123,13 @@ def play(args):
 
     for i in tqdm(range(max_steps)):
 
-        if i < 66:
-            actions = torch.zeros((env.num_envs, env.num_actions))
-            actions[:, :] = env.default_dof_pos[:]
-        else:
-            env.ref_count = torch.zeros(env.num_envs)
-            actions = policy(obs.detach())  # * 0.
-        # actions = policy(obs.detach())  # * 0.
+        # if i < 66:
+        #     actions = torch.zeros((env.num_envs, env.num_actions))
+        #     actions[:, :] = env.default_dof_pos[:]
+        # else:
+        #     env.ref_count = torch.zeros(env.num_envs)
+        #     actions = policy(obs.detach())  # * 0.
+        actions = policy(obs.detach())  # * 0.
         
         if FIX_COMMAND:
             env.commands[:, 0] = 0.    # 1.0

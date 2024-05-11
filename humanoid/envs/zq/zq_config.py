@@ -168,7 +168,7 @@ class ZqCfg(LeggedRobotCfg):
         # put some settings here for LLM parameter tuning
         target_joint_pos_scale = 0.3    # rad
         target_feet_height = 0.1       # m
-        step_freq = 1.0                # Hz, sec=0.666
+        step_freq = 1.5                # Hz, sec=0.666
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(error*sigma)
@@ -240,7 +240,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 60  # per iteration
-        max_iterations = 3001  # number of policy updates
+        max_iterations = 10001  # number of policy updates
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations

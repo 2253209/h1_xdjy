@@ -99,7 +99,7 @@ class LeggedRobot(BaseTask):
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
-            self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
+            # self.dof_vel = (self.dof_pos - self.last_dof_pos) / self.dt
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
