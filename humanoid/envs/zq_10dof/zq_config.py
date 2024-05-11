@@ -111,7 +111,7 @@ class Zq10Cfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.85]
+        pos = [0.0, 0.0, 0.835]
         # default_joint_angles = {  # = target angles [rad] when action = 0.0
         #     'JOINT_Y1': -0.0,
         #     'JOINT_Y2': 0.0,
@@ -131,23 +131,23 @@ class Zq10Cfg(LeggedRobotCfg):
         default_joint_angles = {  # = target angles [rad] when action = 0.0
             'JOINT_Y1': -0.0,
             'JOINT_Y2': 0.0,
-            'JOINT_Y3': 0.1,
-            'JOINT_Y4': -0.2,
-            'JOINT_Y5': 0.1,
+            'JOINT_Y3': 0.21,
+            'JOINT_Y4': -0.53,
+            'JOINT_Y5': 0.31,
             # 'JOINT_Y6': 0.03,
 
             'JOINT_Z1': 0.0,
             'JOINT_Z2': 0.0,
-            'JOINT_Z3': 0.1,
-            'JOINT_Z4': -0.2,
-            'JOINT_Z5': 0.1,
+            'JOINT_Z3': 0.21,
+            'JOINT_Z4': -0.53,
+            'JOINT_Z5': 0.31,
             # 'JOINT_Z6': -0.03,
         }
 
     class control(LeggedRobotCfg.control):
         # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 100, #'JOINT_Y6': 50,
-                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 100, #'JOINT_Z6': 50
+        stiffness = {'JOINT_Y1': 200.0, 'JOINT_Y2': 200.0, 'JOINT_Y3': 200.0, 'JOINT_Y4': 200.0, 'JOINT_Y5': 200, #'JOINT_Y6': 50,
+                     'JOINT_Z1': 200.0, 'JOINT_Z2': 200.0, 'JOINT_Z3': 200.0, 'JOINT_Z4': 200.0, 'JOINT_Z5': 200, #'JOINT_Z6': 50
                      }
         damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 4, #'JOINT_Y6': 4,
                    'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 4, #'JOINT_Z6': 4
@@ -286,7 +286,7 @@ class Zq10CfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 60  # per iteration
-        max_iterations = 3001  # number of policy updates
+        max_iterations = 10001  # number of policy updates
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations

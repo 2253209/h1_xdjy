@@ -183,8 +183,8 @@ class Zq1Cfg(LeggedRobotCfg):
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.2
-            knee_distance = 0.2
+            feet_distance = 0.  # 0.2
+            knee_distance = 0.  # 0.2
             # contact
             feet_contact_forces = -0.01
             # vel tracking
@@ -240,7 +240,7 @@ class Zq1CfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 60  # per iteration
-        max_iterations = 3001  # number of policy updates
+        max_iterations = 10001  # number of policy updates
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations
