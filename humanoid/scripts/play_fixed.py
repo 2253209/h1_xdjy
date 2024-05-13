@@ -49,7 +49,7 @@ def play(args):
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
 
-    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_5-11_6dof_nodelay_2.pt'
+    load_model = f'{LEGGED_GYM_ROOT_DIR}/logs/zq/exported/policies/policy_1.pt'
     policy = torch.jit.load(load_model)
     
     robot_index = 0 # which robot is used for logging
@@ -63,14 +63,18 @@ def play(args):
     sloger = SimpleLogger(f'{LEGGED_GYM_ROOT_DIR}/logs/play_log', get_title_short())
     t1 = time.time()
     t0 = 0
+    _first = True
 
     for i in range(10*int(env.max_episode_length)):
-        actions = policy(obs.detach())
-        # if i < 100:
-        #     actions = torch.zeros((env.num_envs, env.num_actions))
-        #     actions[:, :] = env.default_dof_pos[:]
-        # else:
-        #     actions = policy(obs.detach())  # * 0.
+        # actions = policy(obs.detach())
+        if i < 100:
+            actions = torch.zeros((env.num_envs, env.num_actions))
+            actions[:, :] = env.default_dof_pos[:]
+        else:
+            if _first:
+                env.ref_count[:] = 0.
+                _first = False
+            actions = policy(obs.detach())  # * 0.
         # obs[:, -12:] = 0.
         # print('obs_action:', obs[0, -12:])
         # actions = policy(obs.detach())
