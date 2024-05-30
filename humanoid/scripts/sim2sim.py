@@ -12,7 +12,7 @@ from humanoid.utils import Logger
 
 
 class cmd:
-    vx = 0.3
+    vx = 0.8
     vy = 0.0
     dyaw = 0.0
 

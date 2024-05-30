@@ -54,8 +54,8 @@ class Zq10Cfg(LeggedRobotCfg):
         terminate_body_height = 0.4
 
     class terrain(LeggedRobotCfg.terrain):
-        # mesh_type = 'plane'
-        mesh_type = 'trimesh'
+        mesh_type = 'plane'
+        # mesh_type = 'trimesh'
         curriculum = False
         # rough terrain only:
         measure_heights = False

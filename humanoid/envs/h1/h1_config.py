@@ -3,7 +3,7 @@ import numpy as np
 from humanoid.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 
-class ZqCfg(LeggedRobotCfg):
+class H1Cfg(LeggedRobotCfg):
     """
     Configuration class for the XBotL humanoid robot.
     """
@@ -11,13 +11,13 @@ class ZqCfg(LeggedRobotCfg):
         # change the observation dim
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 47  # 47
+        num_single_obs = 41  # 47 2+3+3+3+10+10+10
         # num_observations = int(frame_stack * num_single_obs)
-        num_observations = 47
-        single_num_privileged_obs = 73  # 73
+        num_observations = 41
+        single_num_privileged_obs = 65  # 73
         # num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
-        num_privileged_obs = 73
-        num_actions = 12
+        num_privileged_obs = 65
+        num_actions = 10
         num_envs = 4096
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
@@ -29,8 +29,8 @@ class ZqCfg(LeggedRobotCfg):
 
     class viewer(LeggedRobotCfg.viewer):
         ref_env = 0
-        pos = [-3, 2, 0.83]  # [m]
-        lookat = [2., 2, 0.83]  # [m]
+        pos = [-3, -3, 3]  # [m]
+        lookat = [0., 0, 1.]  # [m]
 
     class safety:
         # safety factors
@@ -39,16 +39,15 @@ class ZqCfg(LeggedRobotCfg):
         torque_limit = 0.85
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/ZQ_Humanoid/urdf/ZQ_Humanoid_long_foot.urdf'
-
-        name = "zq01"
-        foot_name = "foot"
-        knee_name = "4"
-
-        terminate_after_contacts_on = []
-        penalize_contacts_on = ['3', '4']
-        self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/h1/urdf/h1.urdf'
+        name = "h1"
+        foot_name = "ankle"
+        knee_name = "knee"
+        penalize_contacts_on = ["hip", "knee"]
+        terminate_after_contacts_on = ["pelvis"]
+        self_collisions = 1  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
+
         replace_cylinder_with_capsule = True
         fix_base_link = False
         terminate_body_height = 0.4
@@ -83,29 +82,48 @@ class ZqCfg(LeggedRobotCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotCfg.init_state):
-        pos = [0.0, 0.0, 0.85]
+        pos = [0.0, 0.0, 1.0]  # x,y,z [m]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-            'JOINT_Y1': -0.0,
-            'JOINT_Y2': 0.0,
-            'JOINT_Y3': 0.22,
-            'JOINT_Y4': -0.4,
-            'JOINT_Y5': 0.18,
-            'JOINT_Y6': 0.0,
-
-            'JOINT_Z1': 0.0,
-            'JOINT_Z2': 0.0,
-            'JOINT_Z3': 0.22,
-            'JOINT_Z4': -0.4,
-            'JOINT_Z5': 0.18,
-            'JOINT_Z6': -0.0,
+            'left_hip_yaw_joint': 0.,
+            'left_hip_roll_joint': 0,
+            'left_hip_pitch_joint': -0.4,
+            'left_knee_joint': 0.8,
+            'left_ankle_joint': -0.4,
+            'right_hip_yaw_joint': 0.,
+            'right_hip_roll_joint': 0,
+            'right_hip_pitch_joint': -0.4,
+            'right_knee_joint': 0.8,
+            'right_ankle_joint': -0.4,
+            'torso_joint': 0.,
+            'left_shoulder_pitch_joint': 0.,
+            'left_shoulder_roll_joint': 0,
+            'left_shoulder_yaw_joint': 0.,
+            'left_elbow_joint': 0.,
+            'right_shoulder_pitch_joint': 0.,
+            'right_shoulder_roll_joint': 0.0,
+            'right_shoulder_yaw_joint': 0.,
+            'right_elbow_joint': 0.,
         }
 
     class control(LeggedRobotCfg.control):
-        # PD Drive parameters:
-        stiffness = {'JOINT_Y1': 160.0, 'JOINT_Y2': 160.0, 'JOINT_Y3': 160.0, 'JOINT_Y4': 160.0, 'JOINT_Y5': 20., 'JOINT_Y6': 20.,
-                     'JOINT_Z1': 160.0, 'JOINT_Z2': 160.0, 'JOINT_Z3': 160.0, 'JOINT_Z4': 160.0, 'JOINT_Z5': 20., 'JOINT_Z6': 20.}
-        damping = {'JOINT_Y1': 10, 'JOINT_Y2': 10, 'JOINT_Y3': 10, 'JOINT_Y4': 10, 'JOINT_Y5': 0.7, 'JOINT_Y6': 0.7,
-                   'JOINT_Z1': 10, 'JOINT_Z2': 10, 'JOINT_Z3': 10, 'JOINT_Z4': 10, 'JOINT_Z5': 0.7, 'JOINT_Z6': 0.7}
+        stiffness = {'hip_yaw': 200,
+                     'hip_roll': 200,
+                     'hip_pitch': 200,
+                     'knee': 300,
+                     'ankle': 40,
+                     'torso': 300,
+                     'shoulder': 100,
+                     "elbow": 100,
+                     }  # [N*m/rad]
+        damping = {'hip_yaw': 5,
+                   'hip_roll': 5,
+                   'hip_pitch': 5,
+                   'knee': 6,
+                   'ankle': 2,
+                   'torso': 6,
+                   'shoulder': 2,
+                   "elbow": 2,
+                   }  # [N*m/rad]  # [N*m*s/rad]
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
@@ -141,7 +159,7 @@ class ZqCfg(LeggedRobotCfg):
         max_push_vel_xy = 0.2
         max_push_ang_vel = 0.4
         dynamic_randomization = 0.02
-        randomize_init_state = False
+        randomize_init_state = True
 
     class commands(LeggedRobotCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -151,7 +169,7 @@ class ZqCfg(LeggedRobotCfg):
 
         class ranges:
 
-            lin_vel_x = [-0.3, 0.6]  # min max [m/s]
+            lin_vel_x = [-0.3, 1.0]  # min max [m/s]
             lin_vel_y = [-0.0, 0.0]   # min max [m/s]
             ang_vel_yaw = [-0.3, 0.3]    # min max [rad/s]
             heading = [-3.14, 3.14]
@@ -162,7 +180,8 @@ class ZqCfg(LeggedRobotCfg):
             # heading = [-0.0, 0.0]
 
     class rewards:
-        base_height_target = 0.83
+        soft_dof_pos_limit = 0.9
+        base_height_target = 0.98
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
@@ -219,7 +238,7 @@ class ZqCfg(LeggedRobotCfg):
         clip_actions = 18.
 
 
-class ZqCfgPPO(LeggedRobotCfgPPO):
+class H1CfgPPO(LeggedRobotCfgPPO):
     seed = -1
     runner_class_name = 'OnPolicyRunner'   # DWLOnPolicyRunner
 
@@ -244,7 +263,7 @@ class ZqCfgPPO(LeggedRobotCfgPPO):
 
         # logging
         save_interval = 200  # check for potential saves every this many iterations
-        experiment_name = 'zq'
+        experiment_name = 'h1'
         run_name = ''
         # load and resume
         resume = False

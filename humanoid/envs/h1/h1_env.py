@@ -11,7 +11,7 @@ from collections import deque
 from numpy import random
 
 
-class ZqFreeEnv(LeggedRobot):
+class H1Env(LeggedRobot):
 
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
         super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
@@ -91,13 +91,13 @@ class ZqFreeEnv(LeggedRobot):
 
         self.ref_dof_pos[:, :] = self.default_dof_pos[0, :]
         # right foot stance phase set to default joint pos
-        self.ref_dof_pos[:, 2] += self.cos_pos[:, 0] * scale_1
-        self.ref_dof_pos[:, 3] += -self.cos_pos[:, 0] * scale_2
-        self.ref_dof_pos[:, 4] += self.cos_pos[:, 0] * scale_1
+        self.ref_dof_pos[:, 2] += -self.cos_pos[:, 0] * scale_1
+        self.ref_dof_pos[:, 3] += self.cos_pos[:, 0] * scale_2
+        self.ref_dof_pos[:, 4] += -self.cos_pos[:, 0] * scale_1
         # left foot stance phase set to default joint pos
-        self.ref_dof_pos[:, 8] += self.cos_pos[:, 1] * scale_1
-        self.ref_dof_pos[:, 9] += -self.cos_pos[:, 1] * scale_2
-        self.ref_dof_pos[:, 10] += self.cos_pos[:, 1] * scale_1
+        self.ref_dof_pos[:, 7] += -self.cos_pos[:, 1] * scale_1
+        self.ref_dof_pos[:, 8] += self.cos_pos[:, 1] * scale_2
+        self.ref_dof_pos[:, 9] += -self.cos_pos[:, 1] * scale_1
         # print(self.ref_dof_pos[0])
 
     def create_sim(self):
@@ -137,9 +137,9 @@ class ZqFreeEnv(LeggedRobot):
         noise_vec[0: 5] = 0.  # commands
         noise_vec[5: 8] = noise_scales.ang_vel * self.obs_scales.ang_vel   # ang vel
         noise_vec[8: 11] = noise_scales.quat * self.obs_scales.quat         # euler x,y
-        noise_vec[11: 23] = noise_scales.dof_pos * self.obs_scales.dof_pos
-        noise_vec[23: 35] = noise_scales.dof_vel * self.obs_scales.dof_vel
-        noise_vec[35: 47] = 0.  # previous actions
+        noise_vec[11: 21] = noise_scales.dof_pos * self.obs_scales.dof_pos
+        noise_vec[21: 31] = noise_scales.dof_vel * self.obs_scales.dof_vel
+        noise_vec[31: 41] = 0.  # previous actions
 
         return noise_vec
 
@@ -478,7 +478,7 @@ class ZqFreeEnv(LeggedRobot):
         """
         joint_diff = self.dof_pos - self.default_joint_pd_target
         left_yaw_roll = joint_diff[:, :2]
-        right_yaw_roll = joint_diff[:, 6: 8]
+        right_yaw_roll = joint_diff[:, 5: 7]
         yaw_roll = torch.norm(left_yaw_roll, dim=1) + torch.norm(right_yaw_roll, dim=1)
         yaw_roll = torch.clamp(yaw_roll - 0.1, 0, 50)
         return torch.exp(-yaw_roll * 100) - 0.01 * torch.norm(joint_diff, dim=1)

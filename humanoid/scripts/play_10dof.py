@@ -154,25 +154,25 @@ def play(args):
         if i < stop_state_log:
             logger.log_states({
                 'p_left_0': env.dof_pos[robot_index, 0].item(),
+                'p_left_1': env.dof_pos[robot_index, 1].item(),
                 'p_left_2': env.dof_pos[robot_index, 2].item(),
                 'p_left_3': env.dof_pos[robot_index, 3].item(),
                 'p_left_4': env.dof_pos[robot_index, 4].item(),
-                # 'p_left_5': env.dof_pos[robot_index, 5].item(),
                 'p_right_0': env.dof_pos[robot_index, 5].item(),
+                'p_right_1': env.dof_pos[robot_index, 6].item(),
                 'p_right_2': env.dof_pos[robot_index, 7].item(),
                 'p_right_3': env.dof_pos[robot_index, 8].item(),
                 'p_right_4': env.dof_pos[robot_index, 9].item(),
-                # 'p_right_5': env.dof_pos[robot_index, 11].item(),
                 't_left_0': env.torques[robot_index, 0].item(),
+                't_left_1': env.torques[robot_index, 1].item(),
                 't_left_2': env.torques[robot_index, 2].item(),
                 't_left_3': env.torques[robot_index, 3].item(),
                 't_left_4': env.torques[robot_index, 4].item(),
-                # 't_left_5': env.torques[robot_index, 5].item(),
                 't_right_0': env.torques[robot_index, 5].item(),
+                't_right_1': env.torques[robot_index, 6].item(),
                 't_right_2': env.torques[robot_index, 7].item(),
                 't_right_3': env.torques[robot_index, 8].item(),
                 't_right_4': env.torques[robot_index, 9].item(),
-                # 't_right_5': env.torques[robot_index, 11].item(),
                 })
         elif i == stop_state_log:
             logger.plot_states()
@@ -191,6 +191,6 @@ def play(args):
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RENDER = True
-    FIX_COMMAND = True
+    FIX_COMMAND = False
     args = get_args()
     play(args)
